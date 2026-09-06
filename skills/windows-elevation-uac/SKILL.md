@@ -26,3 +26,12 @@ Elevation gets the write attempted; this gets it *verified*. Past sessions repea
 - **Round-trip verify.** After any registry write or config import: (1) read the value back, (2) diff against intent, (3) cross the persistence boundary that matters (app restart, sign-out, sleep/resume), (4) re-read. Only then report success. **`reg add` exit 0 is NOT verification.**
 
 This does not apply to read-only queries (`reg query`, `Get-ItemProperty`) or application-level config files.
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

@@ -97,3 +97,12 @@ The consequence for design: **prefer one config-driven router over N single-purp
 - `settings.json` here carries 454 deny entries. Edit it with a script that asserts a unique anchor and re-parses the JSON before writing — never by hand, never by rewriting the file.
 - Text *about* a destructive command trips the content guards and hangs the session. Never build such text inside a shell command; `Write` the file, then `git commit -F`.
 - A hook that fires on every turn is itself a per-turn tax. Gate on a band, a threshold, or a once-per-session marker before you ship it.
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

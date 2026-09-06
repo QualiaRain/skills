@@ -1,6 +1,6 @@
 # skills
 
-17 Claude Code skills, exported from one person's working setup and de-personalized so they run on yours.
+19 Claude Code skills, exported from one person's working setup and de-personalized so they run on yours.
 They are Markdown instruction files (plus a few small scripts) that Claude Code loads by name; nothing here runs on its own.
 
 ## Install
@@ -18,7 +18,7 @@ Or just clone this repo and ask Claude Code: "what is this and how do I set it u
 
 Using claude.ai or Cowork instead of the terminal? See "How skills work on each surface" below — those need a ZIP upload, not a file copy.
 
-## The 17 skills
+## The 19 skills
 
 Claude Code craft (portable, any OS):
 
@@ -37,6 +37,8 @@ Windows practical:
 - `bash-on-windows` — the Bash tool (Git Bash/MSYS2) silently halves doubled backslashes; quoting and capture traps.
 - `powershell-scripting-encoding` — PS 5.1 reads BOM-less `.ps1` as ANSI; encoding and cross-shell quoting gotchas.
 - `gh-safe-comment-edit` — post or edit GitHub comments from Windows without cp1252 mojibake or CRLF doubling.
+- `gh-comment-watch` — after posting to an upstream issue or PR, watch for replies and state changes and follow up until resolved.
+- `upstream-submission-walkthrough` — step-by-step for pushing fix branches to your fork and opening upstream PRs, gated on your go at each step.
 - `windows-elevation-uac` — elevated commands and system mutations (RunAs, `.reg` imports, BCDEDIT, drivers) that fail silently under UAC.
 - `windows-display-fault-triage` — find WHY a display looks wrong by measuring the colour stack, not guessing.
 - `pc-health-sweep` — one read-only, privacy-redacted Windows sweep turned into a ranked verdict.
@@ -58,7 +60,7 @@ Installing is a pure file copy. Running is mostly read-only, but a few scripts c
 
 - Skill names referenced but not shipped are marked `(not included in this pack)` inline. Ignore those pointers or drop them.
 - "the owner" in a skill means you, the person running Claude Code.
-- Seven skills are Windows-specific (listed above). They are noise on macOS/Linux; skip them.
+- Seven skills are Windows-specific (the Windows list above, minus the two GitHub ones). They are noise on macOS/Linux; skip them.
 - A few skills mention the Claude Desktop app, scheduled routines, or hooks. If you don't use those, ignore that section.
 - If you already have a folder with the same name under `~/.claude/skills/`, the installer skips it — rename one of them.
 - Numbers quoted inside the skills (token savings, timings) were measured on the author's machine. Don't take them on trust; run the skill and see.
@@ -84,6 +86,10 @@ Sync is one-way and partial:
 Treat this repo as the source of truth and every installed copy as a deployment. Change a skill here, then re-install / re-upload; do not edit the installed copies.
 
 Docs: [Claude Code skills](https://code.claude.com/docs/en/skills) · [Use skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude) · [Create custom skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills)
+
+## Found a problem?
+
+Every skill ends with a short optional "Feedback" note. If one misfires or breaks, file a report here: https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml — which skill, which surface, your OS, what you asked, what happened. Claude can file it for you if you say so. Pull requests are welcome too; the pack's own `gh-safe-comment-edit` and `gh-comment-watch` skills exist precisely to make posting to GitHub from Windows painless.
 
 ## License
 

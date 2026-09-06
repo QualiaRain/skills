@@ -119,3 +119,12 @@ carry verbatim quotes.
 
 Whole-tree `find` / `grep -r` / `ls -R` over the profile times out here. Use Glob and Grep, or a
 depth-1 `Get-ChildItem -Directory` with a name filter.
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

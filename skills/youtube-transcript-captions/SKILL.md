@@ -158,3 +158,12 @@ If there are multiple speakers (`SPEAKER_00`, `SPEAKER_01`), identify them from 
 - `OUTNAME.en.vtt` (manual or best) and `OUTNAME.en-orig.vtt` (auto) may both appear; prefer `en.vtt`.
 - **A watch page returning HTTP 429 does NOT mean the transcript is unobtainable — the captions endpoint is a separate path and often still works.** Never record "no transcript available" on the strength of a watch-page/oEmbed failure; run step 2 first. (2026-07-26: a source had been filed for days as permanently unretrievable after persistent 429s and "not indexed in any secondary source"; `yt-dlp --write-auto-subs` returned the full transcript first try. The 429 was a property of one retrieval path, not of the video.)
 - No captions at all → fall back: `yt-dlp -f bestaudio -x` then the `whispr-transcribe` (not included in this pack) skill. Also fall back when you need speaker diarization (interviews/panels) — captions carry no speaker labels.
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

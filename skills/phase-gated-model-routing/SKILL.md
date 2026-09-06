@@ -212,3 +212,12 @@ Per the global "spend intelligence in proportion to blast surface" rule, these a
 3. Is the batch parcelable? Subagents, not a session swap.
 4. Is the acceptance-criteria file current? The verifier reads it cold.
 5. Am I actually running on the model the plan assumes? Check before attributing failures.
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

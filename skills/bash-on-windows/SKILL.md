@@ -228,3 +228,11 @@ The warner above tells you the command is about to be mangled. **It does not fix
 
 **Retired — `bash-backslash-guard.py` (BLOCK variant; unwired 2026-05-27, deleted 2026-06-10). Not the live warner of the same name — see the top of this section.** An older `PreToolUse` hook that *blocked* any backslash-before-alphanumeric — retired because a hard block just trades a silent mangle for a hard stop (the auto-repair hook is the better answer for the path subset). The file is gone from disk; do NOT wire it expecting it to work. If the silent-data (sed/grep) subset ever recurs, recover it via `git -C ~/.claude show 966f609^:hooks/bash-backslash-guard.py`.
 
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

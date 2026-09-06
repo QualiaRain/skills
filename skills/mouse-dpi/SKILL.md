@@ -295,3 +295,12 @@ Windows 11, pwsh 7.6.5, Python 3.12, and every script re-verified on 3.11 the sa
 is correct, not a failure. A `windows_pointer_check` FAIL is a finding about the
 machine, not a defect here. `rawinput_dpi_test.py` is excluded because starting it
 at all opens a system-wide capture window; only its `--help` is checked.
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

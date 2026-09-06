@@ -59,3 +59,12 @@ the owner's standing ask: be the one who maintains, tests, and improves Sonnet's
 - **Re-validate** via the existing harness: `Claude Eval Sandbox/sonnet-intelligence-eval/` (8 paste-and-ask tasks, blind Opus judge, Sonnet ×3 for consistency). It **defaults to a no-cost dry run** — pass `args.execute=true`, and a cheap `taskIds` subset for a smoke test. Re-confirm the two load-bearing claims: (a) the specifics-fabrication still reproduces, (b) effort is still not the lever.
 - **Harden this skill's execution** with the weak-model loop (`skill-execution-hardening`): does a cold Haiku session, handed a specific-bearing task plus this skill, actually insert the gate? Test triggering with `skill-execution-hardening (absorbed skill-trigger-test-windows, 2026-09-05)`. Writer ≠ grader — a fresh subagent grades, never the author.
 - **Failures become durable checks.** When a real Sonnet fabrication slips through in live work, file it the same session as a named test case (the symptom + the specific it invented + the gate that would have caught it) and fold the class into the gate list above — don't let the fix live only in chat memory.
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

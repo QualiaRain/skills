@@ -154,3 +154,12 @@ You never have to answer "is this good?" -- only "does it match, and if not, wha
 - **No stop condition / no turn cap** — burns the usage budget with nothing to show. `/goal` won't stop itself on tokens.
 - **Looping an unattended irreversible action** — publishing/sending/deleting inside a loop. Scope to reversible work; stop-and-surface otherwise.
 - **All-Opus loop** — defaulting every turn + the grader to Opus. Cheap worker + cheap anchored grader is usually identical quality at a fraction of the cost (`workflow-cost-discipline`).
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

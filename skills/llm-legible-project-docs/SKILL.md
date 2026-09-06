@@ -77,3 +77,12 @@ When a description contains any such hazard, make the frontmatter strict-valid w
 ## Convention-matching duty — the full 5-point detail
 
 The principle is stated inline in `~/.claude/CLAUDE.md` (default to convention, surface deviations). The **elaborated 5-point duty + worked examples** — the "forks belong in the kitchen drawer" framing, and the default-on-scaffold / surface-when-proposing / surface-when-noticed / naming-prior / no-cuteness rules — live in **[`references/convention-matching-detail.md`](references/convention-matching-detail.md)**. Read it when scaffolding or naming and you need the detail beyond the one-line CLAUDE.md rule.
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

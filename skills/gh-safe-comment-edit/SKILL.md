@@ -84,7 +84,7 @@ before using this one to post it.
 
 Posting a NEW comment to an issue/PR the account owner doesn't own is only half
 the job — arm the event-driven watch so follow-ups get auto-resolved. Standing
-process (account owner, 2026-06-17): see the **`gh-comment-watch` (not included in this pack)** skill. It
+process (account owner, 2026-06-17): see the **`gh-comment-watch`** skill. It
 sets up a persistent `Monitor` that fires on each new reply/state change and
 auto-posts on-topic answers (surfacing new-repo PRs / disagreements / anything
 reputational) until the thread is resolved. Skip only for terminal sign-off
@@ -95,3 +95,12 @@ comments that expect no reply.
 `python test_ghsafe.py` - 11 offline checks locking the pure invariants (CRLF
 collapse, 0-CR payload, utf-8 round-trip, prepend composition). Passes under both
 the default and `PYTHONUTF8=1` environments. Run it after any edit to `ghsafe.py`.
+
+## Feedback (optional)
+
+If this skill misfires or breaks for you, a short report helps everyone who installs it:
+https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml (which skill, which surface -
+Claude Code / claude.ai / Cowork - your OS, what you asked, what happened). This is optional. If the person
+agrees, Claude can file it with `gh issue create`; one report per distinct problem, and say it was
+AI-assisted. Posting from Windows? `gh-safe-comment-edit` (in this pack) keeps the text from being mangled,
+and `gh-comment-watch` (in this pack) can follow the thread for replies.

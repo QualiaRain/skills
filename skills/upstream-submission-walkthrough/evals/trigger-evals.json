@@ -1,0 +1,22 @@
+[
+  {"query": "ok the 9 wave-5 fix branches are gate-clean and the bodies are drafted in notes/wave5-pr-bodies.md — let's push them to qfork and open the PRs, one step at a time", "should_trigger": true},
+  {"query": "alright I'm ready to submit these bug fixes upstream. walk me through it and let me approve each step before anything happens", "should_trigger": true},
+  {"query": "resume the wave-4 push sequence where we left off", "should_trigger": true},
+  {"query": "time to open the pull requests on OWNER/REPO for these fixes", "should_trigger": true},
+  {"query": "push the branches to my fork and then we'll open the PRs upstream", "should_trigger": true},
+  {"query": "let's ship these patches to the maintainer. go slow, i want to review everything before anything goes public", "should_trigger": true},
+  {"query": "the bodies are all done — actually push and open the 6 PRs now", "should_trigger": true},
+  {"query": "k lets send these fixes upstream finally, one at a time pls", "should_trigger": true},
+  {"query": "pick up the paused PR submission for the lora fixes and keep going", "should_trigger": true},
+  {"query": "I want to contribute these 4 fixes back to triton-windows — open the PRs but pause before the public part", "should_trigger": true},
+  {"query": "draft the PR description for the hypertile fix, including the disclosure paragraph", "should_trigger": false},
+  {"query": "write a reply to vlad's comment on PR #4915 asking about the colon-in-password edge case", "should_trigger": false},
+  {"query": "find as many bugs as you can in the video_models subsystem", "should_trigger": false},
+  {"query": "commit these doc changes and push to master", "should_trigger": false},
+  {"query": "rebase my feature branch onto origin/main and resolve any conflicts", "should_trigger": false},
+  {"query": "open a PR in our internal repo to merge my feature branch into develop", "should_trigger": false},
+  {"query": "run verify_upstream.py on the api-input-guards branch and tell me if it's clean", "should_trigger": false},
+  {"query": "push the updated style presets to the D: install via the bridge", "should_trigger": false},
+  {"query": "summarize the bug-hunt-wave4-staging.md notes for me", "should_trigger": false},
+  {"query": "I merged vlad's PR into my fork, now push my fork's master up to github", "should_trigger": false}
+]

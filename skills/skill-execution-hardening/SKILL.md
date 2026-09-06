@@ -154,7 +154,7 @@ loop-engineering scored 10/10 precision but 3/10 recall on Opus; a captured "mis
 loop-engineering and "setting up the loop" immediately after a Glob — i.e. applied, not ignored.)
 
 ### Provenance
-Built + validated 2026-06-04 testing `sdnext-bridge-content`: the stock harness reported a bogus 10/20 (all-pass/all-fail signature); this shim reported a true 19/20 (lone "miss" a defensible borderline).
+Built + validated 2026-06-04 testing a bridge-content skill: the stock harness reported a bogus 10/20 (all-pass/all-fail signature); this shim reported a true 19/20 (lone "miss" a defensible borderline).
 
 ## Editing the skill is self-modification
 

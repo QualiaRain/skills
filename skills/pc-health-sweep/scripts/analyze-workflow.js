@@ -1,11 +1,11 @@
 // Dynamic workflow: analyse a collect.ps1 sweep across six lenses, verify every finding
 // adversarially, then synthesise a ranked report. ~25 agents. MEASURED COST: about 2.0M subagent
-// tokens and about 16 minutes. It is opt-in only - never launch it without J saying so.
+// tokens and about 16 minutes. It is opt-in only - never launch it without the owner saying so.
 //
 // Before launching, set the two constants below.
 //   DIR      the folder collect.ps1 wrote (the one holding 00_system.txt ... 16_*.txt)
 //            or export PC_HEALTH_DIAG_DIR instead of editing this file
-//   CONTEXT  what the main session already knows: hardware, OS build, this boot, what J actually
+//   CONTEXT  what the main session already knows: hardware, OS build, this boot, what the owner actually
 //            reported, and any known/ongoing investigation the analysts should NOT re-derive.
 //            Vague context produces vague findings; this is the highest-leverage line in the file.
 

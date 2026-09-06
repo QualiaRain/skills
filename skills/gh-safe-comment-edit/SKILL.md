@@ -40,7 +40,7 @@ hand-roll the `gh api` PATCH each time.
 SKILL=~/.claude/skills/gh-safe-comment-edit/ghsafe.py
 
 # read a body (clean utf-8, lf) - safe to pipe/inspect
-python "$SKILL" get     --repo vladmandic/sdnext --kind comment --id 4714530760
+python "$SKILL" get     --repo OWNER/REPO --kind comment --id 1234567890
 
 # replace a body from a file (file read as bytes+utf-8; output verified)
 python "$SKILL" set     --repo OWNER/REPO --kind pr --id 4936 --body-file body.md

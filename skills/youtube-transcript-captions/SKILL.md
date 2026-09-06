@@ -5,7 +5,7 @@ description: "Get the text of a YouTube video - yt-dlp caption download in secon
 
 # YouTube transcript via captions
 
-Captions beat GPU transcription for YouTube sources: ~75 KB download vs. media download + WhisperX run. Verified 2026-07-08 (Peterson Analysis project).
+Captions beat GPU transcription for YouTube sources: ~75 KB download vs. media download + WhisperX run. Verified 2026-07-08.
 
 ## Steps
 

@@ -46,7 +46,11 @@ Utility:
 
 ## Read before running (budget)
 
-Context size, not "effort", is what makes an agent expensive: cost ≈ turns × context per turn. Four skills here spawn subagents or headless runs and can spend a lot if pointed at a big target: `workflow-cost-discipline`, `loop-engineering`, `headless-instruction-selftest`, `token-efficiency-sweep`. Each carries its own launch gate and budget warnings in the body — read them first, start on something small.
+Context size, not "effort", is what makes an agent expensive: cost ≈ turns × context per turn. Five skills here can spawn subagents or headless runs and spend a lot if pointed at a big target: `workflow-cost-discipline`, `loop-engineering`, `headless-instruction-selftest`, `token-efficiency-sweep`, and `pc-health-sweep`'s optional analysis workflow (the sweep itself is cheap; the workflow is not). Each carries its own launch gate and budget warnings in the body — read them first, start on something small.
+
+## Not everything is read-only
+
+Installing is a pure file copy. Running is mostly read-only, but a few scripts change live state and are gated behind explicit flags: `mouse-dpi` (`--set`, `--yes`), `windows-display-fault-triage` (`-FixRange`, `set_hz.ps1`), and everything in `windows-elevation-uac`. Read the flag before you pass it.
 
 ## What might clash with your setup
 

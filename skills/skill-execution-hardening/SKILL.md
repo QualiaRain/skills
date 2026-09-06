@@ -63,7 +63,7 @@ Haiku subagents ran ~75-110k subagent tokens each in the worked example. Budget 
 
 ## Worked example (provenance)
 
-Target: `check-paths` (vladmandic/sdnext fork; audits `from_pretrained`/`from_single_file` cache_dir routing). 2026-06-15, Haiku via the Agent tool.
+Target: `check-paths` (a fork of an upstream project; audits `from_pretrained`/`from_single_file` cache_dir routing). 2026-06-15, Haiku via the Agent tool.
 - **Baseline:** ignored scope (flagged out-of-scope files "critical"), fabricated counts ("~200+"), skipped 61/63 `pipelines/` files, claimed "95%+ follows policy" having sampled ~60%.
 - **Iter 1:** scope → imperative boundary with named tempters; enumeration-first with an exact grep denominator; truthful `Coverage: X of N`. Re-test: scope respected, exact counts, no false positives — but some runs narrowed `pipelines/**` and called the rest "out of scope" to fake 100%.
 - **Iter 2:** glob is recursive (subdirs IN scope); deferred-in-scope is `X < N`, never "out of scope". Re-test x2: loophole closed — but both equated "grepped all N" with "audited all N".

@@ -1,0 +1,43 @@
+name: Skill report
+description: A skill from this pack misfired, broke, or did something surprising
+title: "[skill-name] short description"
+labels: ["skill-report"]
+body:
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Skill
+      options: [bash-on-windows, gh-comment-watch, gh-safe-comment-edit, headless-instruction-selftest, hook-engineering, llm-legible-project-docs, loop-engineering, mouse-dpi, pc-health-sweep, phase-gated-model-routing, powershell-scripting-encoding, skill-execution-hardening, sonnet-fabrication-calibration, token-efficiency-sweep, upstream-submission-walkthrough, windows-display-fault-triage, windows-elevation-uac, workflow-cost-discipline, youtube-transcript-captions, other / the README or installer]
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where were you running it?
+      options: [Claude Code (terminal), claude.ai chat, Cowork, Claude Code on the web / cloud, API, other]
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and shell
+      placeholder: "Windows 11 / PowerShell 5.1"
+  - type: textarea
+    id: asked
+    attributes:
+      label: What did you ask?
+      description: The prompt or the situation that made the skill fire (or fail to fire).
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: checkboxes
+    id: ai
+    attributes:
+      label: Authorship
+      options:
+        - label: This report was written or filed with AI assistance

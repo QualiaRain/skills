@@ -16,6 +16,8 @@ Option B (manual): copy any folder under `skills/` into `~/.claude/skills/`. No 
 
 Or just clone this repo and ask Claude Code: "what is this and how do I set it up?"
 
+Using claude.ai or Cowork instead of the terminal? See "How skills work on each surface" below — those need a ZIP upload, not a file copy.
+
 ## The 17 skills
 
 Claude Code craft (portable, any OS):
@@ -60,6 +62,28 @@ Installing is a pure file copy. Running is mostly read-only, but a few scripts c
 - A few skills mention the Claude Desktop app, scheduled routines, or hooks. If you don't use those, ignore that section.
 - If you already have a folder with the same name under `~/.claude/skills/`, the installer skips it — rename one of them.
 - Numbers quoted inside the skills (token savings, timings) were measured on the author's machine. Don't take them on trust; run the skill and see.
+
+## How skills work on each surface
+
+A skill is just a folder: `SKILL.md` (YAML frontmatter with `name` and `description`, then instructions) plus optional scripts and reference files. That one folder format is used everywhere, but each surface finds skills in a different place, and the copies do not stay in sync with each other.
+
+| Surface | Where it reads skills from | How to install this pack |
+|---|---|---|
+| **Claude Code** (terminal, local) | `~/.claude/skills/<name>/` (personal), `<repo>/.claude/skills/<name>/` (project, committed to git), plugin skills (`/plugin:skill`), and enterprise-managed skills. Precedence: enterprise > personal > project. Edits are picked up live. | `install.ps1` / `install.sh` (copies into personal). Or commit folders into a repo's `.claude/skills/` so everyone who clones gets them. |
+| **claude.ai chat** (web + desktop app) and **Cowork** | Your account's skill list: **Customize > Skills > + > Create skill > Upload a skill**, one ZIP per skill with the skill folder as the ZIP root. Same list serves chat, Cowork, and the Word/Excel/PowerPoint/Outlook add-ins. Cowork also gets skills from installed plugins. Nothing is read from your disk. | Run `zip-skills.ps1` / `zip-skills.sh` to get `dist/<name>.zip` for each skill, then upload the ones you want. |
+| **Claude Code on the web / cloud sessions** | Your account-enabled skills, plus the cloned repo's committed `.claude/skills/`. Your machine's `~/.claude/skills/` is never read. | Upload to your account, or commit into the repo. |
+| **API / Agent SDK** | The Skills API, used with the code execution tool. | See Anthropic's Agent Skills docs. |
+
+Sync is one-way and partial:
+
+- Account skills flow **down** into Claude Code: Cowork and cloud sessions sync them automatically into `~/.claude/skills/synced/`; a local terminal session pulls them only if started with `CLAUDE_CODE_SYNC_SKILLS=1`. Those synced copies are a read-only cache — editing them changes nothing. Edit the source folder and re-upload.
+- Nothing flows **up**: a folder in `~/.claude/skills/` never appears in claude.ai or Cowork by itself.
+- Synced skills running in a local (non-Cowork) session do not execute `!` shell commands, `@` file references, or `${CLAUDE_PROJECT_DIR}`; Claude sees those as plain text. The skills in this pack rely on none of them.
+- Anthropic's upload guide states a 200-character limit on `description`. Most descriptions here are longer, and it is unclear whether the limit is enforced at upload. If an upload is rejected or the description looks cut off, shorten it in the frontmatter and re-zip.
+
+Treat this repo as the source of truth and every installed copy as a deployment. Change a skill here, then re-install / re-upload; do not edit the installed copies.
+
+Docs: [Claude Code skills](https://code.claude.com/docs/en/skills) · [Use skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude) · [Create custom skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills)
 
 ## License
 

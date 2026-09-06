@@ -1,7 +1,7 @@
 ---
 name: upstream-submission-walkthrough
 description: >-
-  the owner's step-by-step EXECUTION walkthrough for pushing staged fix branches to his fork and opening upstream PRs, after the bodies are drafted. Gates every step on his typed go, with a separate pause before the irreversible PR-open. Triggers - push the PRs, ship these fixes upstream, open the pull requests, send these to vlad.
+  Step-by-step EXECUTION walkthrough for pushing staged fix branches to your fork and opening upstream PRs, after the bodies are drafted. Gates every step on your typed go, with a separate pause before the irreversible PR-open. Triggers - push the PRs, ship these fixes upstream, open the pull requests, send these to the maintainer.
 ---
 
 # Upstream submission walkthrough (the owner-gated execution)

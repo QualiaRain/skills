@@ -77,7 +77,7 @@ don't blur them to move faster, and don't overstate the escape hatch.
 
 Reframe the worst case truthfully: the worst outcome of an opened PR is **a closed
 PR** — the most ordinary thing on the platform, not damage. And when the maintainer
-has a track record of welcoming these (e.g. vlad merged the prior waves and asked
+has a track record of welcoming these (e.g. the maintainer merged the prior waves and asked
 for more), the reputational risk is low. Give the owner the honest picture, then let him
 decide; never pressure.
 
@@ -85,7 +85,7 @@ decide; never pressure.
 
 ## 3. The canonical step sequence
 
-Steps map to a typical wave (the SD.Next/vlad instantiation is the worked example;
+Steps map to a typical wave (one real upstream project is the worked example;
 generalize the mechanics for other repos). Gate each per §1.
 
 - **Step 1 — Freshness re-check (fetch).** `git -C <clone> fetch origin`. Read-only.
@@ -152,12 +152,12 @@ machine; invite edits explicitly.
 
 ## 5. Worked reference
 
-The 2026-06-15 SD.Next **Wave-4** run is the canonical instantiation: 9 gate-clean
-fix branches, bodies drafted in `notes/wave4-pr-bodies.md` (lazybones-tier
+One **Wave-4** run against a real upstream project is the canonical instantiation: 9 gate-clean
+fix branches, bodies drafted in a `notes/<wave>-pr-bodies.md` file (lazybones-tier
 disclosure), the push sequence walked one step at a time with the owner typing each go, the
 reversibility conversation that led him to hold before the push, and the durable
-checkpoint on `master`. See that repo's `notes/wave4-pr-bodies.md` (the "Push
-sequence" section) and `notes/bug-hunt-wave4-staging.md` for the full record of how
+checkpoint on `master`. See that project's `notes/<wave>-pr-bodies.md` (the "Push
+sequence" section) and `notes/bug-hunt-<wave>-staging.md` for the full record of how
 this flow ran end to end.
 
 ## Validation (2026-06-15)
@@ -166,7 +166,7 @@ The trigger description was validated with `skill-execution-hardening (absorbed 
 (the skill-creator's own `run_eval.py` is broken on Windows — reads 0 triggers for everything;
 consult that skill BEFORE running any triggering eval here). Result: **precision 10/10** — all ten
 tricky near-misses (draft-a-body, maintainer reply, bug hunt, commit+push-master, rebase,
-internal-repo PR, gate-by-itself, bridge push to D:, summarize-notes, fork-master push) correctly
+internal-repo PR, gate-by-itself, bridge push to a second install, summarize-notes, fork-master push) correctly
 stayed silent. Recall under-reads to ~0 on headless Opus — the documented **act-first** artifact, not
 a description gap: a captured positive transcript showed Claude applying the upstream-contribution
 discipline (refused to act without context, flagged the disclosure policy) rather than ignoring it.

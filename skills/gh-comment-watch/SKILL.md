@@ -29,7 +29,7 @@ review is claimed and none is needed for routine answers. On a watched-thread ev
   answer) → analyze, re-test locally if it needs evidence, draft per `ai-authorship-disclosure` (not included in this pack), and
   **AUTO-POST it** via `gh-safe-comment-edit`. No go needed.
 - **A new outward ACTION beyond replying** — the maintainer wants a PR opened (especially in a
-  *different* repo, e.g. huggingface/diffusers), or wants an SD.Next-side code change → post a brief
+  *different* repo, e.g. huggingface/diffusers), or wants a code change on the upstream project's side → post a brief
   courteous ack if natural, then **SURFACE the bigger action to the account owner** with a ready
   plan. Do not auto-open.
 - **Contentious / a disagreement with the maintainer / anything reputational** → **SURFACE, do not
@@ -249,7 +249,7 @@ exit 0
 - **`GCW_REPO` is the UPSTREAM repo for a fork PR.** A fork→upstream PR object lives on the upstream
   repo, so point the watch at e.g. `OWNER/REPO`, never `yourfork/REPO`, or it watches nothing.
 - Authenticated GitHub rate limit is 5000/hr; 60s polling (~4 calls/cycle for a PR) is well under it.
-- Hard Rules / project constraints still bind every action the watch takes (e.g. SD.Next: never D:,
+- Hard Rules / project constraints still bind every action the watch takes (e.g. never touch a second install,
   never open generated images; local re-tests only).
 
 ## Feedback (optional)

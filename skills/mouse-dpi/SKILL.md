@@ -1,7 +1,7 @@
 ---
 name: mouse-dpi
 description: >-
-  Find a mouse's real DPI and set in-game sensitivity to a target cm/360 on Windows - HID++ read of a Logitech LIGHTSPEED receiver for ground truth, G HUB settings.db as intent only, a Windows pointer-speed sanity check, then work out how a game maps mouse counts to camera degrees and solve for the slider. Use whenever mouse feel or mouse numbers come up - mouse dpi, what dpi am I on, set my sensitivity, sens, eDPI, cm/360, match my sensitivity in <game>, make the mouse feel the same in <game>, polling rate, new mouse set it up, this game feels too fast or too slow, the mouse feels off since I changed something. Not for display DPI or Windows display scaling, a mouse that is broken, laggy, or dropping connection, or FPS and stutter tuning (game-perf-tuning-windows).
+  Find a mouse's real DPI and set in-game sensitivity to a target cm/360 on Windows - HID++ read of a Logitech LIGHTSPEED receiver for ground truth, G HUB settings.db as intent only, a Windows pointer-speed sanity check, then work out how a game maps mouse counts to camera degrees and solve for the slider. Use whenever mouse feel or mouse numbers come up - mouse dpi, what dpi am I on, set my sensitivity, sens, eDPI, cm/360, match my sensitivity in [game], make the mouse feel the same in [game], polling rate, new mouse set it up, this game feels too fast or too slow, the mouse feels off since I changed something. Not for display DPI or Windows display scaling, a mouse that is broken, laggy, or dropping connection, or FPS and stutter tuning (game-perf-tuning-windows).
 ---
 
 # Mouse DPI and in-game sensitivity

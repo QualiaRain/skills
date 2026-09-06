@@ -154,7 +154,7 @@ If there are multiple speakers (`SPEAKER_00`, `SPEAKER_01`), identify them from 
 ## Landmines
 
 - yt-dlp prints a loud "No supported JavaScript runtime" deprecation WARNING — ignorable, captions still download fine (observed 2026-07-08, yt-dlp 2026.06.09).
-- Official channels retitle uploads (e.g. Peterson's channel prefixes "Article:"); a mirror/response video's duration can confirm which upload is canonical.
+- Official channels retitle uploads (e.g. a channel that prefixes "Article:"); a mirror/response video's duration can confirm which upload is canonical.
 - `OUTNAME.en.vtt` (manual or best) and `OUTNAME.en-orig.vtt` (auto) may both appear; prefer `en.vtt`.
 - **A watch page returning HTTP 429 does NOT mean the transcript is unobtainable — the captions endpoint is a separate path and often still works.** Never record "no transcript available" on the strength of a watch-page/oEmbed failure; run step 2 first. (2026-07-26: a source had been filed for days as permanently unretrievable after persistent 429s and "not indexed in any secondary source"; `yt-dlp --write-auto-subs` returned the full transcript first try. The 429 was a property of one retrieval path, not of the video.)
 - No captions at all → fall back: `yt-dlp -f bestaudio -x` then the `whispr-transcribe` (not included in this pack) skill. Also fall back when you need speaker diarization (interviews/panels) — captions carry no speaker labels.

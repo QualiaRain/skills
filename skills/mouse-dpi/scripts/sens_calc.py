@@ -273,7 +273,22 @@ def solve_setting(fn, dpi: float, target_cm360: float) -> float:
             lo = mid
         else:
             hi = mid
-    return (lo + hi) / 2.0
+    setting = (lo + hi) / 2.0
+    # Bisection can stop at the positive lower bound even when no solution
+    # exists (e.g. Minecraft targets slower than its minimum sensitivity).
+    actual = safe(setting)
+    if actual is None or not math.isclose(actual, want_dpc, rel_tol=1e-9):
+        # Zero is outside the positive search interval, but can be a valid
+        # endpoint. Custom formulas (e.g. log(s)) need not be defined there.
+        try:
+            zero = safe(0.0)
+        except SystemExit:
+            zero = None
+        if zero is not None and math.isclose(zero, want_dpc, rel_tol=1e-9):
+            return 0.0
+        raise SystemExit("error: no positive setting reaches that cm/360 - "
+                         "check the target and the game's formula")
+    return setting
 
 
 def fmt(x: float, places: int = 4) -> str:

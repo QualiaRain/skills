@@ -203,7 +203,7 @@ def preflight(model):
     except Exception as ex:
         return False, "could not run claude: %s" % ex
     out = (r.stdout or "") + (r.stderr or "")
-    if "READY" in out.upper():
+    if r.returncode == 0 and (r.stdout or "").strip().upper() == "READY":
         return True, ""
     first = next((ln.strip() for ln in out.splitlines()
                   if ln.strip() and not ln.strip().startswith("Warning:")), "no output")

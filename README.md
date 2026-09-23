@@ -87,6 +87,10 @@ Treat this repo as the source of truth and every installed copy as a deployment.
 
 Docs: [Claude Code skills](https://code.claude.com/docs/en/skills) · [Use skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude) · [Create custom skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills)
 
+## Changing a skill
+
+Run `python3 validate.py` before you commit (CI runs it too). It checks every `SKILL.md`: the frontmatter is valid, `name` matches the folder, the description is 1024 characters or less, no description names a skill this pack does not ship, and every body pointer to such a skill says `(not included in this pack)`. It also checks that relative links resolve, that bundled scripts pass a syntax check, and that this README and the issue template list every skill.
+
 ## Found a problem?
 
 Every skill ends with a short optional "Feedback" note. If one misfires or breaks, file a report here: https://github.com/QualiaRain/skills/issues/new?template=skill-report.yml — which skill, which surface, your OS, what you asked, what happened. Claude can file it for you if you say so. Pull requests are welcome too; the pack's own `gh-safe-comment-edit` and `gh-comment-watch` skills exist precisely to make posting to GitHub from Windows painless.

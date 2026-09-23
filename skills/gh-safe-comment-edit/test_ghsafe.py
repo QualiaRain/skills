@@ -10,9 +10,12 @@ import sys
 import ghsafe
 
 fails = []
+total = 0
 
 
 def check(name, cond):
+    global total
+    total += 1
     print(("ok  " if cond else "FAIL") + " - " + name)
     if not cond:
         fails.append(name)
@@ -55,4 +58,4 @@ print()
 if fails:
     print("FAILED: " + ", ".join(fails))
     sys.exit(1)
-print("ALL %d ghsafe tests passed." % 13)
+print("ALL %d ghsafe tests passed." % total)

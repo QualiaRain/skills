@@ -1,11 +1,11 @@
 ---
 name: youtube-transcript-captions
-description: "Get the text of a YouTube video - yt-dlp caption download in seconds, no media download, no GPU, no browser - falling back to downloading audio plus whispr for a word-for-word DIARIZED transcript when captions are missing or speakers must be separated. Use on any YouTube URL - transcribe this video, summarize this link, what does he say in, I need to quote from this, analyze this video. Not for local files (whispr-transcribe)."
+description: "Get the text of a YouTube video - yt-dlp caption download in seconds, no media download, no GPU, no browser - falling back to downloading audio plus a Whisper-based diarized transcript when captions are missing or speakers must be separated. Use on any YouTube URL - transcribe this video, summarize this link, what do they say in, I need to quote from this, analyze this video. Not for transcribing local audio/video files."
 ---
 
 # YouTube transcript via captions
 
-Captions beat GPU transcription for YouTube sources: ~75 KB download vs. media download + WhisperX run. Verified 2026-07-08.
+Captions beat GPU transcription for YouTube sources: ~75 KB download vs. media download + WhisperX run. Needs `yt-dlp` on PATH (`yt-dlp --version`; install with `pip install -U yt-dlp` if missing).
 
 ## Steps
 
@@ -15,11 +15,13 @@ Captions beat GPU transcription for YouTube sources: ~75 KB download vs. media d
 yt-dlp "ytsearch5:SEARCH TERMS" --print "%(id)s | %(title)s | %(channel)s | %(duration)s | %(view_count)s" --no-download
 ```
 
-2. Download captions only (into the session scratchpad):
+2. Download captions only (into the session scratchpad; `OUTNAME` is any base name you pick):
 
 ```
 yt-dlp --skip-download --write-subs --write-auto-subs --sub-langs "en.*" --sub-format vtt -o "OUTNAME" "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
+
+   Done when at least one `OUTNAME.*.vtt` file exists. Several can appear (`OUTNAME.en.vtt`, `OUTNAME.en-orig.vtt`, `OUTNAME.en-US.vtt`); prefer `OUTNAME.en.vtt`, else use whichever exists, and put that name in the scripts below. No `.vtt` at all = no English captions: go to the fallback.
 
 3. Strip VTT markup to plain text (handles rolling auto-captions, which repeat each line — the consecutive-dedup is load-bearing):
 
@@ -39,96 +41,37 @@ open('transcript.txt', 'w', encoding='utf-8').write(text)
 
 4. Sanity-check: word count ÷ duration. **Do NOT treat a high rate as a bug.** Real ranges: 120–170 wpm unedited speech, 200–270 wpm for jump-cut tutorial/YouTube content (every pause removed in the edit). Under ~110 → dedup ate real content or captions are partial. Over ~280 → probably duplicated text.
 
-   In the 170–280 band, don't guess — the word-level timestamps settle it in one command. Median inter-word gap ≥0.30s means genuine fast speech; a much smaller gap than the apparent rate implies means the text is duplicated:
+   In the 170–280 band, don't guess — the word-level timestamps settle it in one command. They count each spoken word once, so duplicated text cannot inflate this rate. If it is close to the step-4 rate, the speech is genuinely fast; if the step-4 rate is well above it, the text is duplicated:
 
 ```python
 import re
 raw = open('OUTNAME.en.vtt', encoding='utf-8').read()
 st = sorted({int(h)*3600+int(m)*60+float(s) for h,m,s in re.findall(r'<(\d\d):(\d\d):(\d\d\.\d\d\d)>', raw)})
 gaps = [b-a for a, b in zip(st, st[1:]) if 0 < b-a <= 2.0]   # >2s = cut point, not a pause
-print('%.0f wpm actual speaking rate' % (60/(sum(gaps)/len(gaps))))
+if not gaps:
+    print('no word-level timestamps (manual captions carry none) - use the auto-caption file, e.g. OUTNAME.en-orig.vtt')
+else:
+    print('%.0f wpm actual speaking rate' % (60/(sum(gaps)/len(gaps))))
 ```
 
-   Measured 2026-07-26: Nate Herk 226 wpm (0.24s median gap) vs a narration channel at 135 wpm (0.36s) — both transcripts clean. The old 120–170 band false-alarmed on five of six videos and cost several turns chasing a non-existent dedup bug.
+   Example: a fast jump-cut tutorial channel measured 226 wpm and a narration channel 135 wpm — both transcripts clean. The old 120–170 band false-alarmed on five of six videos and cost several turns chasing a non-existent dedup bug.
 
-## Fallback: full download + diarized transcript (whispr)
+## Fallback: audio download + diarized transcript
 
-Download any YouTube video → diarized transcript → summary. Minimum tool calls.
+Use when there are no captions, or you need speakers separated (interviews, panels) - captions carry no speaker labels.
 
-### Setup constants
+The author used `whispr`, a private WhisperX wrapper that is not public. Use a public equivalent instead: **WhisperX** (bundles faster-whisper + pyannote diarization), or faster-whisper plus pyannote yourself. Diarization needs a free Hugging Face token with the pyannote model terms accepted. Check the installed version's flags with `whisperx --help` before running; do not guess them.
 
-```powershell
-$env:PYTHONIOENCODING = 'utf-8'   # mandatory — whispr prints Unicode; Windows errors without this
-$W = "$HOME\Claude\Whispr"
-$CWD = (Get-Location).Path        # save so you can restore after cd'ing into $W if needed
-```
+1. **Download audio only:** `yt-dlp -f bestaudio -x --audio-format mp3 -o "downloads/%(title)s.%(ext)s" "<YOUTUBE_URL>"`. Done when an `.mp3` appears in `downloads/`.
+2. **Transcribe + diarize**, e.g. `whisperx "downloads/<file>.mp3" --diarize --hf_token <HF_TOKEN> --output_dir transcripts --output_format txt` (confirm each flag in `--help`). Skip diarization for single-speaker content; it is the slow part. On Windows, set `PYTHONIOENCODING=utf-8` first or Unicode output can crash the run.
+3. **Read the `.txt`, not the JSON** (word-level JSON is huge). Summarize in 300-500 words:
+   - **What it's about** - one-sentence lede
+   - **Key concepts** - 3-5 main ideas
+   - **Specifics** - examples, timestamps, notable quotes
+   - **Takeaway** - conclusion or call to action
 
-Always invoke whispr via `uv run --project $W whispr …` — `whispr` is not on PATH.
-
----
-
-### Workflow (2–3 tool calls)
-
-#### Tool call 1 — Download
-
-```powershell
-$env:PYTHONIOENCODING = 'utf-8'
-$W = "$HOME\Claude\Whispr"
-$url = "<YOUTUBE_URL>"
-$outDir = "downloads"
-
-# Create dirs if needed
-"downloads","transcripts" | ForEach-Object { if (-not (Test-Path $_)) { New-Item -ItemType Directory -Path $_ | Out-Null } }
-
-# Download (--no-update suppresses version warning; -f best gets a pre-merged file)
-uv run --project $W yt-dlp --no-update -f b -o "$outDir\%(title)s.%(ext)s" "$url"
-
-# Capture the freshly-downloaded file
-$videoFile = (Get-ChildItem $outDir -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
-$baseName  = [System.IO.Path]::GetFileNameWithoutExtension($videoFile)
-Write-Host "Downloaded: $videoFile"
-```
-
-#### Tool call 2 — Transcribe + render text
-
-```powershell
-$env:PYTHONIOENCODING = 'utf-8'
-$W = "$HOME\Claude\Whispr"
-# (Set $videoFile and $baseName from Tool call 1 output, or re-derive with Get-ChildItem)
-
-$jsonOut = "transcripts\$baseName-transcript.json"
-$txtOut  = "transcripts\$baseName-transcript.txt"
-
-# Transcribe + diarize (--fold-traces merges stray trace labels into real speakers).
-# For solo-speaker content, add --no-diarize to save ~22s per 17-min of video
-# (skips the EBU R128 re-prep + pyannote inference entirely — see edit-pipeline.md §15.17).
-# Rule: use --no-diarize when the content is known to be one speaker AND you don't need
-# speaker labels. If in doubt, keep the default (diarization).
-uv run --project $W whispr transcribe "$videoFile" -o "$jsonOut" --fold-traces
-
-# Render readable timecoded text
-uv run --project $W whispr transcript "$jsonOut" -o "$txtOut" --format hms --consolidate-speakers
-Write-Host "Transcript: $txtOut"
-```
-
-#### No tool call — Read + summarize
-
-Read the `.txt` file (not the JSON — it's word-level and huge). Synthesize a summary:
-
-- **What it's about** — one sentence lede
-- **Key concepts** — 3–5 main ideas
-- **Specifics** — examples, timestamps, notable quotes
-- **Takeaway** — conclusion or call to action
-- Target: **300–500 words**
-
-If there are multiple speakers (`SPEAKER_00`, `SPEAKER_01`), identify them from self-intros or direct address in the first few minutes and mention them in the summary.
-
-#### Present to user
-
-1. Your written summary
-2. `transcripts/<name>-transcript.txt` — full timecoded transcript
-
----
+   With multiple speakers (`SPEAKER_00`, `SPEAKER_01`), name them from self-intros or direct address in the first few minutes.
+4. **Present:** the summary, plus the path to the full transcript file. Keep the audio in `downloads/` in case you need to re-run with different options.
 
 ### Edge cases
 
@@ -136,28 +79,16 @@ If there are multiple speakers (`SPEAKER_00`, `SPEAKER_01`), identify them from 
 |-----------|-----------|
 | Download timeout | Retry once with `--socket-timeout 30` |
 | Invalid / unavailable URL | Report yt-dlp's error message; don't retry |
-| Video >2 hours | Warn the user: "This will take several minutes to transcribe" |
+| Video >2 hours | Warn the user transcription will take several minutes (longer without a GPU) |
 | Non-English or no speech | Whisper still attempts; note in summary if output is sparse |
-| Single speaker | Use `--no-diarize` to save ~22s per 17-min (skips loudnorm re-prep + pyannote). If multi-speaker is possible, keep default. |
-| **`Sign in to confirm you're not a bot`** (429 + this error on plain download) | **Don't reach for `--cookies-from-browser` first** — Chrome's cookie DB locks while it's running, and even closed, modern Chrome's app-bound cookie encryption makes yt-dlp's DPAPI decrypt fail outright (open upstream, [yt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)); Edge cookies are also unreachable (blocked by this machine's AppData deny-list). The real fix, proven 2026-07-15 on two live downloads: install the `bgutil-ytdlp-pot-provider` pip plugin + its companion `generate_once.js` server (needs Node.js as the JS-challenge-solver runtime — confirm with `node --version`; install if absent), then pass `--js-runtimes node --extractor-args "youtube:player_client=mweb" --extractor-args "youtubepot-bgutilscript:script_path=<path to generate_once.js>" --remote-components ejs:github`. This sidesteps cookies entirely via PO tokens — no browser credential access needed at all. `mweb`/`web_embedded` clients worked; `tv`/`ios`/`web_safari` hit DRM or PO-token gaps, avoid those. |
-
----
-
-### Notes
-
-- **Never** use `uv run whispr` without `--project $W` — it's not on PATH and will fail from any other working directory.
-- `--format hms` is mandatory on the `transcript` command — the default SMPTE format errors on audio without `--fps`/`--video`.
-- `--consolidate-speakers` groups each speaker's runs into readable blocks rather than word-by-word labels.
-- The JSON transcript is large (~0.5 MB for a 15-min video); read the `.txt` for summarization, not the JSON.
-- Downloaded video stays in `downloads/` — reuse it if you need to re-transcribe with different flags.
+| **`Sign in to confirm you're not a bot`** (429 + this error on plain download) | **Don't reach for `--cookies-from-browser` first** - Chrome's cookie DB locks while it's running, and even closed, modern Chrome's app-bound cookie encryption makes yt-dlp's decrypt fail on Windows (open upstream, [yt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)). What worked: install the `bgutil-ytdlp-pot-provider` pip plugin + its companion `generate_once.js` script (needs Node.js - confirm with `node --version`), then pass `--js-runtimes node --extractor-args "youtube:player_client=mweb" --extractor-args "youtubepot-bgutilscript:script_path=<path to generate_once.js>" --remote-components ejs:github`. This uses PO tokens instead of cookies - no browser credential access. `mweb`/`web_embedded` clients worked; `tv`/`ios`/`web_safari` hit DRM or PO-token gaps, avoid those. |
 
 ## Landmines
 
-- yt-dlp prints a loud "No supported JavaScript runtime" deprecation WARNING — ignorable, captions still download fine (observed 2026-07-08, yt-dlp 2026.06.09).
+- yt-dlp may print a loud "No supported JavaScript runtime" deprecation WARNING — ignorable, captions still download fine (seen on yt-dlp 2026.06.09).
 - Official channels retitle uploads (e.g. a channel that prefixes "Article:"); a mirror/response video's duration can confirm which upload is canonical.
-- `OUTNAME.en.vtt` (manual or best) and `OUTNAME.en-orig.vtt` (auto) may both appear; prefer `en.vtt`.
-- **A watch page returning HTTP 429 does NOT mean the transcript is unobtainable — the captions endpoint is a separate path and often still works.** Never record "no transcript available" on the strength of a watch-page/oEmbed failure; run step 2 first. (2026-07-26: a source had been filed for days as permanently unretrievable after persistent 429s and "not indexed in any secondary source"; `yt-dlp --write-auto-subs` returned the full transcript first try. The 429 was a property of one retrieval path, not of the video.)
-- No captions at all → fall back: `yt-dlp -f bestaudio -x` then the `whispr-transcribe` (not included in this pack) skill. Also fall back when you need speaker diarization (interviews/panels) — captions carry no speaker labels.
+- **A watch page returning HTTP 429 does NOT mean the transcript is unobtainable — the captions endpoint is a separate path and often still works.** Never record "no transcript available" on the strength of a watch-page/oEmbed failure; run step 2 first. (A video once written off as unretrievable after days of 429s returned its full transcript on the first `yt-dlp --write-auto-subs` try. The 429 was a property of one retrieval path, not of the video.)
+- No captions at all, or you need speaker labels → use the fallback above.
 
 ## Feedback (optional)
 

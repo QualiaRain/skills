@@ -1,6 +1,6 @@
 ---
 name: gh-comment-watch
-description: "After posting a Claude-authored comment to an external or upstream GitHub issue or PR, arm an event-driven watch that fires on a reply or state change, then analyze, re-test and auto-post follow-ups until resolved. Standard, not opt-in. Also for watching a thread you did NOT comment on - monitor this PR for replies, ping me when the maintainer responds, notify me when #NNNN changes. Not for comments in the owner's own voice."
+description: "After posting a Claude-authored comment to an external or upstream GitHub issue or PR, arm an event-driven watch that fires on a reply or state change, then analyze, re-test and answer follow-ups (auto-posting only where the owner allows) until resolved. Arming the watch is standard, not opt-in. Also for watching a thread you did NOT comment on - monitor this PR for replies, ping me when the maintainer responds, notify me when #NNNN changes. Not for comments in the owner's own voice."
 ---
 
 # Post-comment watch: arm an event-driven monitor, auto-resolve until done
@@ -10,24 +10,27 @@ job** — a maintainer or reporter will often reply, and an AI being slow to ans
 own comment is the failure this skill prevents. So immediately after posting, **arm an event-driven
 watch** that wakes you the moment there's a reply, and resolve the thread autonomously.
 
-Established as standing process by the account owner 2026-06-17 (born from OWNER/REPO#123).
-
 ## When this fires
 
 - **TRIGGERS:** any comment you (Claude) post to a GitHub issue/PR the account owner does **not**
   own — the disclosed, Claude-authored kind that can draw a follow-up.
-- **SKIPS:** a comment drafted in the account owner's own voice that he reviews and sends; a terminal
+- **SKIPS:** a comment drafted in the account owner's own voice that they review and send; a terminal
   sign-off that expects no reply ("thanks, confirmed fixed"); non-GitHub messages (Slack/email);
-  PR branch-push/open mechanics (that's `upstream-submission-walkthrough`).
+  PR branch-push/open mechanics (that's `upstream-submission-walkthrough`, in this pack).
 
-## The standing autonomy boundary (account owner, 2026-06-17)
+## The autonomy boundary
+
+This is the pack's default. **Auto-posting to someone else's repo needs the owner's say-so:** if
+the owner has not explicitly allowed it (in this session or in their CLAUDE.md), treat every
+"AUTO-POST" below as "draft it and SURFACE it for a go" instead. Many projects do not welcome
+unreviewed AI replies.
 
 Each reply itself opens with the Claude disclosure line, so honesty is carried per-reply — no human
 review is claimed and none is needed for routine answers. On a watched-thread event:
 
 - **On-topic follow-up to my comment** (the bug, the workaround, the fix, a clarifying question I can
-  answer) → analyze, re-test locally if it needs evidence, draft per `ai-authorship-disclosure` (not included in this pack), and
-  **AUTO-POST it** via `gh-safe-comment-edit`. No go needed.
+  answer) → analyze, re-test locally if it needs evidence, draft it with an AI-authorship disclosure line (the original setup used an `ai-authorship-disclosure` skill (not included in this pack)), and
+  **AUTO-POST it** via `gh-safe-comment-edit` (in this pack). No per-reply go needed once the owner allows auto-posting.
 - **A new outward ACTION beyond replying** — the maintainer wants a PR opened (especially in a
   *different* repo, e.g. huggingface/diffusers), or wants a code change on the upstream project's side → post a brief
   courteous ack if natural, then **SURFACE the bigger action to the account owner** with a ready
@@ -40,17 +43,19 @@ review is claimed and none is needed for routine answers. On a watched-thread ev
 
 ### 1. Post the comment
 Use `gh-safe-comment-edit` (`ghsafe.py post`) — never hand-roll a `gh api` write (mojibake/CRLF
-risk). Run `ai-authorship-disclosure` on the CONTENT first. Capture the numeric comment id and the
-issue/PR number.
+risk). Check the CONTENT for a disclosure line first. Capture the numeric comment id (printed by
+`ghsafe.py post`) and the issue/PR number.
 
 ### 2. Arm the event-driven monitor
 The watcher script is `scripts/watch_issue.sh` (in this skill). It polls every 60s and emits one
 line per NEW comment (anyone but the authenticated account) or state change, dedup'd by comment id.
-Smoke-test the core pipeline once (it should emit nothing right after you post — only your own
-comment exists, which is excluded), then launch it **persistent** under the `Monitor` tool:
+On its first run for a thread it silently records every comment already there, so an old thread's
+history is not replayed as "new". Smoke-test the core pipeline once, then launch it **persistent**
+under the `Monitor` tool:
 
 ```
-# Smoke-test (expect no output = correct):
+# Smoke-test: must exit 0. It prints the ids of comments by OTHER people (none if yours is the only
+# one). An error means gh auth, the repo, or the number is wrong - fix that before launching.
 GCW_REPO=OWNER/REPO GCW_NUMBER=123 \
   bash -c 'gh api "repos/$GCW_REPO/issues/$GCW_NUMBER/comments?per_page=100" \
     --jq ".[] | select(.user.login != \"$(gh api user --jq .login)\") | .id"'
@@ -63,18 +68,25 @@ GCW_REPO=OWNER/REPO GCW_NUMBER=123 GCW_DIR=<project>/tmp \
 
 Set `GCW_DIR` to a writable, gitignored scratch dir (so the `.seen`/`.alive` state persists across a
 restart but never gets committed). On Windows/Git-Bash use forward-slash absolute paths.
+**It worked if** `GCW_DIR/gcw-<owner>_<repo>-<number>.alive` exists and its timestamp keeps moving.
+If the script exits immediately with "cannot determine GitHub login", run `gh auth status` or set
+`GCW_ME=<your-login>`.
+
+`Monitor`, `ScheduleWakeup` and `TaskStop` are Claude Code tools; which ones you have depends on your
+version and surface. If `Monitor` is missing, use the `run_in_background` pattern in "Watching a
+thread you did NOT just comment on" below.
 
 ### 3. Arm a liveness backstop (optional but recommended)
 A long `ScheduleWakeup` (~30 min) whose ONLY job is to relaunch the monitor if it died — it checks
-the heartbeat file `GCW_DIR/gcw-<repo>-<number>.alive` (touched every ~60s):
-`find "<GCW_DIR>/gcw-<slug>.alive" -mmin -5` → prints path = alive (re-arm, silent); prints nothing
+the heartbeat file `GCW_DIR/gcw-<owner>_<repo>-<number>.alive` (touched every ~60s):
+`find "<GCW_DIR>/gcw-<owner>_<repo>-<number>.alive" -mmin -5` → prints path = alive (re-arm, silent); prints nothing
 = dead → relaunch the Monitor and re-arm. The backstop **never polls or posts** — replies are driven
 only by the monitor's emitted events (prevents double-posting). The persistent seen-file means a
 relaunched monitor re-emits anything missed during downtime.
 
 ### 4. Handle each emitted event
 When a `NEW COMMENT …` or `STATE changed …` event lands, act per the autonomy boundary above. Record
-what you posted in the project's notes/handoff. Then the monitor keeps running (no re-arm needed —
+what you posted in the project's notes/handoff file (e.g. `next.md`), if it has one. Then the monitor keeps running (no re-arm needed —
 it's persistent).
 
 ### 5. Stop when resolved
@@ -92,8 +104,8 @@ owner says stop. Then `TaskStop` the monitor and omit the backstop re-arm. Until
 - **Session-bound** — Monitor and ScheduleWakeup both die when the session ends. To keep watching
   across sessions, the project's `next.md`/handoff must say how to re-arm (relaunch the Monitor with
   the same env + command); leave a watch entry there.
-- **Disclosure + posting mechanics are delegated** — content goes through `ai-authorship-disclosure`,
-  posting through `gh-safe-comment-edit`. This skill owns only the watch + the autonomy routing.
+- **Disclosure + posting mechanics are delegated** — content gets a disclosure check, posting goes
+  through `gh-safe-comment-edit`. This skill owns only the watch + the autonomy routing.
 
 ## Watching a thread you did NOT just comment on
 
@@ -118,9 +130,10 @@ Verified empirically (don't re-run these — the answers are stable):
   `subscriptionType: null`. GitHub's GraphQL API has no streaming/subscription type.
 - **Notifications REST API is poll-only**, with a server-enforced `X-Poll-Interval` **floor of 60s**.
 - **`gh` has no `--watch` / event-stream subcommand.**
-- **No GitHub MCP server is connected by default** on this machine.
+- A GitHub MCP server, if connected, is request/response too — it does not push.
 
-So every real option is **polling**. The skill below is the cheapest correct way to poll.
+So for a local session every real option is **polling**. (Exception: some hosted surfaces, e.g.
+Claude Code on the web, list a PR-activity subscription tool. If you have one, use it instead.) The skill below is the cheapest correct way to poll.
 
 ### The right answer: a hybrid (primary signal + long backstop)
 
@@ -164,7 +177,7 @@ change. App closed → the watch **pauses**, and resumes when you reopen. No mec
 without cloud infrastructure.
 
 And a cloud cron **cannot** substitute: the follow-on work — run a verifier, push a fix from a
-**local** clone, run local reproducers — needs **this machine's local files**. A cloud routine could
+**local** clone, run local reproducers — needs **your local files**. A cloud routine could
 detect the change but couldn't do the thing you actually wake up to do. Don't propose one as the fix.
 
 ### Copy-paste watcher template
@@ -227,20 +240,19 @@ exit 0
 - **Max-cycle safety bound.** The loop self-exits after ~48h (`exit 0`) so a forgotten watcher
   becomes a re-check, not an immortal process; the backstop relaunches if the threads still matter.
 
-### Relationship to sibling skills
+### Relationship to the rest of this skill and to sibling skills
 
-- **`gh-comment-watch`** — the narrower companion: *you just posted a disclosed, Claude-authored
-  comment to an upstream issue/PR and want to auto-resolve the reply thread* (its own monitor +
-  auto-post-the-reply autonomy boundary). If that's the situation, use it; it owns the reply policy.
-  This skill owns the **general** "watch any external thread/resource and wake on change" mechanism
-  and the push-impossibility result.
-- **`loop-engineering`** — iterate-until-green / writer≠grader, watching **your own** work toward a
+- **The first half of this skill** (`watch_issue.sh` under `Monitor`) is the narrower case: *you just
+  posted a disclosed, Claude-authored comment and want to handle the reply thread*; it owns the reply
+  policy. This section owns the **general** "watch any external thread/resource and wake on change"
+  mechanism and the push-impossibility result.
+- **`loop-engineering`** (in this pack) — iterate-until-green / writer≠grader, watching **your own** work toward a
   measurable finish. This skill is its outward-facing sibling: watching an **external** resource you
   don't control and waking on its change. Cross-link, don't duplicate.
 
 ## Notes / limits
 
-- **All three PR feedback channels are watched** (verified 2026-06-28 against cli/cli#13723):
+- **All three PR feedback channels are watched:**
   conversation comments (`issues/{n}/comments`), inline review comments in the Files-changed tab
   (`pulls/{n}/comments`, emitted with `file:line`), and review submissions
   (`pulls/{n}/reviews`, emitted with `[APPROVED]`/`[CHANGES_REQUESTED]`/etc.). The empty `COMMENTED`
@@ -248,9 +260,9 @@ exit 0
   For a plain issue the pulls/* channels are detected-absent once and skipped (no per-cycle 404).
 - **`GCW_REPO` is the UPSTREAM repo for a fork PR.** A fork→upstream PR object lives on the upstream
   repo, so point the watch at e.g. `OWNER/REPO`, never `yourfork/REPO`, or it watches nothing.
-- Authenticated GitHub rate limit is 5000/hr; 60s polling (~4 calls/cycle for a PR) is well under it.
-- Hard Rules / project constraints still bind every action the watch takes (e.g. never touch a second install,
-  never open generated images; local re-tests only).
+- Authenticated GitHub rate limit is 5000/hr; 60s polling (~4 calls/cycle for a PR, more only on
+  threads with over 100 items per channel) is well under it.
+- The owner's and the project's own rules still bind every action the watch takes.
 
 ## Feedback (optional)
 

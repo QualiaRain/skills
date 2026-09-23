@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """ghsafe - safe programmatic edits to GitHub comment / PR / issue bodies from Windows.
 
-Closes the two traps that have each corrupted LIVE upstream content from this machine:
+Closes the two traps that have each corrupted LIVE upstream content from Windows:
 
   1. cp1252 mojibake - capturing gh's UTF-8 output with the Windows locale codec
-     turns an em-dash into `a-eur-"` and publishes it. (Now also backstopped by
-     PYTHONUTF8=1 in ~/.claude/settings.json - but this tool NEVER relies on that;
-     it always decodes UTF-8 explicitly, so it is correct even outside Claude Code.)
+     turns an em-dash into `a-eur-"` and publishes it. (PYTHONUTF8=1 also helps,
+     but this tool NEVER relies on it; it always decodes UTF-8 explicitly, so it is
+     correct with or without that setting.)
 
   2. CRLF doubling - writing an already-CRLF body through a Windows text-mode file
      (`open(p,"w")` without newline="") turns every `\\r\\n` into `\\r\\r\\n`. GitHub

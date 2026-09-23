@@ -71,11 +71,12 @@ for name in names:
     for m in unshipped_re.finditer(desc):
         err(where, f"description names unshipped skill {m.group(1)!r}")
     offset = text[: len(text) - len(body)].count("\n")
-    for i, line in enumerate(body.splitlines(), offset + 1):
-        for m in unshipped_ref_re.finditer(line):
-            tail = line[m.end():m.end() + len(MARKER) + 2]
-            if MARKER not in tail:
-                err(f"{where}:{i}", f"{m.group(1)!r} lacks {MARKER!r}")
+    for m in unshipped_ref_re.finditer(body):
+        # The marker must follow within a few words ("`x` skill (not included ...)").
+        tail = " ".join(body[m.end():m.end() + len(MARKER) + 20].split())
+        if MARKER not in tail:
+            line = offset + 1 + body.count("\n", 0, m.start())
+            err(f"{where}:{line}", f"{m.group(1)!r} lacks {MARKER!r}")
     for target in re.findall(r"\]\(([^)#\s]+)\)", body):
         if re.match(r"^[a-z]+:", target):
             continue

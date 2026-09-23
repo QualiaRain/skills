@@ -23,7 +23,7 @@ Two levers, in the owner's words: **shorter chats, and fewer standing instructio
 
 ### Landmine: dedup by `requestId` or you will overcount ~2.5x
 
-Claude Code writes **several `.jsonl` records per API response** — one for the thinking block, one for text, one for each tool_use — and **every one of them carries the same `usage` object**. Summing usage per record triple-counts. This was measured wrong in this exact way on 2026-08-21 (a routine "cost 12.0M read over 77 turns"; deduped it was 4.7M over 30 calls) before the error was caught.
+Claude Code writes **several `.jsonl` records per API response** — one for the thinking block, one for text, one for each tool_use — and **every one of them carries the same `usage` object**. Summing usage per record triple-counts. The author measured it wrong in exactly this way once (a routine "cost 12.0M read over 77 turns"; deduped it was 4.7M over 30 calls) before the error was caught.
 
 ```python
 # Real per-session cost. Run from ~/.claude/projects/<slug>/
@@ -42,6 +42,10 @@ def measure(f):
     cc    = sum(u.get("cache_creation_input_tokens", 0) for u in seen.values())
     out   = sum(u.get("output_tokens", 0) for u in seen.values())
     return calls, out, cc, read, read // max(calls, 1)
+
+import glob
+for f in sorted(glob.glob("*.jsonl")):
+    print(f, "calls=%d out=%d cache_create=%d read=%d read_per_call=%d" % measure(f))
 ```
 
 `output + cache_creation` are the expensive tokens; `cache_read` bills at roughly a tenth the rate but is the biggest raw number and the one that responds to standing cuts.
@@ -58,7 +62,18 @@ The transcript records what the harness injected, as `attachment` records. This 
 | `mcp_instructions_delta` | per-MCP-server instructions |
 | `hook_additional_context` | whatever a SessionStart hook injected |
 
-`~/Claude/Token Efficiency/skill-listing-probe/probe.py` parses the first of these. Always filter on `isInitial` — later `skill_listing` records are single-skill re-injections, not the budget.
+Field names are as observed by the author; check one record before trusting a parser. To read the initial skill listing of a session:
+
+```python
+import json, sys
+for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    try: a = (json.loads(line).get("attachment") or {})
+    except Exception: continue
+    if a.get("type") == "skill_listing" and a.get("isInitial"):
+        print(a.get("skillCount"), "skills,", len(a.get("content") or ""), "chars")
+```
+
+Always filter on `isInitial` — later `skill_listing` records are single-skill re-injections, not the budget. Startup context is snapshotted at session start, so **no settings edit is visible to the session that made it**; measure a session that opened *after* the change. Plugin skills are listed separately and are not governed by the local budget or `skillOverrides`, so split local (`~/.claude/skills`) from plugin entries before judging a result.
 
 The rest of turn 1 is the base system prompt plus built-in tool schemas, which is fixed and not worth attacking.
 
@@ -74,15 +89,17 @@ Long unwrapped lines make `wc -l` useless here (rendered prose is one line per p
 
 ## The levers, cheapest first
 
-**1. Cap the skill listing where descriptions do nothing.** Descriptions exist to make a skill *auto-trigger*. A scheduled routine follows a fixed SKILL.md and names the skill it wants, so every description is dead weight re-read on every call. Two settings, both scoped per directory in `.claude/settings.local.json`:
+**0. Delete the work before optimising it.** The cheapest turn is the one that never runs. In one measured day, cutting an unattended fleet from 5 runs a day to 2 dwarfed every per-turn saving available anywhere else. Before censusing a surface, ask whether the thing that reads it needs to run at all, or that often. This lever is first because it is the only one that removes whole sessions rather than shaving their floor.
 
-- `"skillListingBudgetFraction": 0.0005` — fraction of the context window (in characters) reserved for the listing; over budget, descriptions are shortened to fit. Default 0.01.
-- `env.SLASH_COMMAND_TOOL_CHAR_BUDGET: "1000"` — the same budget as a hard char number, and it overrides the fraction. User-level default on this machine is 100000.
-- `"skillOverrides": {"<skill>": "name-only"}` — the surgical form: `on` | `name-only` | `user-invocable-only` | `off`. `name-only` lists the skill without its description, so `Skill(<name>)` still resolves. Prefer it when you need a few skills to keep triggering.
+**1. Cap the skill listing where descriptions do nothing (routines only).** Descriptions exist to make a skill *auto-trigger*. A scheduled routine follows a fixed SKILL.md and names the skill it wants, so every description is dead weight re-read on every call. Settings, scoped per directory in `.claude/settings.local.json` (full key table under *Measuring the skill listing* below):
+
+- `"skillListingBudgetFraction": 0.0005` — fraction of the context window (in characters) reserved for the listing; over budget, descriptions are dropped to fit. Default 0.01.
+- `env.SLASH_COMMAND_TOOL_CHAR_BUDGET: "1000"` — the same budget as a hard char number; it overrides the fraction.
+- `"skillOverrides": {"<skill>": "name-only"}` — the surgical, per-skill form. Use this instead of a budget in any **interactive** project: a tight budget silences skills you cannot choose (see *The budget is a ceiling* below).
 
 **Names stay listed at any budget.** That is what makes this safe: nothing loses the ability to be invoked, only the ability to fire on its own. Before applying it anywhere, grep the routine's SKILL.md for skill names it calls, and confirm none of them depends on description-triggering.
 
-When a project `env` block is added, copy the user-level `env` verbatim first — a wholesale-replace merge would otherwise silently drop `PYTHONUTF8` and the privacy flags.
+When a project `env` block is added, check your user-level `env` vars still apply in that project afterwards (the author copies the user-level block in verbatim, to be safe against a replace-style merge dropping them).
 
 **2. Suppress SessionStart injections for sessions that cannot use them.** A hook that orients a *person* is pure cost in an unattended run. Gate inside the hook on cwd and return a two-line pointer instead of the block, so a person who does open a chat there is not stranded. Measured: 10,270 chars -> 291.
 
@@ -97,9 +114,7 @@ for f in EXTRACTED_FILES: new |= set(open(f, encoding="utf-8").read().split("\n"
 print([l[:120] for l in orig if l.strip() and l not in new])   # must be []
 ```
 
-**4. Move payloads out of the always-on path.** Lookup tables, maps, history, receipts -> a pointed-at file. Bulk payloads for another model -> a Drive file, never a Notion page body (a page body is re-fetched and re-billed; a Drive file is not).
-
-**0. Delete the work before optimising it.** The cheapest turn is the one that never runs. Measured 2026-08-21: cutting the unattended fleet from 5 runs a day to 2 dwarfed every per-turn saving available anywhere else that day. Before censusing a surface, ask whether the thing that reads it needs to run at all, or that often. This lever is first because it is the only one that removes whole sessions rather than shaving their floor.
+**4. Move payloads out of the always-on path.** Lookup tables, maps, history, receipts -> a pointed-at file. Bulk payloads for another model -> a file it reads once, not a page body that a connector re-fetches into context each time.
 
 **5. Fewer calls beats fewer chars.** One call at 150k context costs more than 3k chars of standing text does across a whole session. Batch independent tool calls into one message; do not re-derive what a log already says; do not spawn a subagent for a two-call job.
 
@@ -116,45 +131,32 @@ print([l[:120] for l in orig if l.strip() and l not in new])   # must be []
 
 ## Before you close: write the finding back
 
-Append one dated line to `references/findings-ledger.md` — what you measured, what you changed, what it saved, and whether it is verified or still waiting on a run. A finding that only exists in a closed chat's scrollback is not a finding.
+The ledger lives in [`references/findings-ledger.md`](references/findings-ledger.md) (the author's dated measurements; read it before re-running a measurement). Append one dated line there — what you measured, what you changed, what it saved, and whether it is verified or still waiting on a run. A finding that only exists in a closed chat's scrollback is not a finding.
 
-Bound it: past ~25 entries, keep the newest ~15 and fold anything that has held three separate times up into this skill body as a rule. An unbounded ledger becomes the waste it was written to prevent. Related surfaces that must not drift from this one: `~/.claude/snippets/token-budget-discipline.md` (estimate-before-heavy-work behaviour) and the per-close ledger in memory `feedback_efficiency_compounds_per_chat`.
+Bound it: past ~25 entries, keep the newest ~15 and fold anything that has held three separate times up into this skill body as a rule. An unbounded ledger becomes the waste it was written to prevent.
+If this skill is installed as a read-only copy (e.g. synced from claude.ai/Cowork), append to the source copy instead, or give the user the line to add.
 
----
-
-## Findings ledger
-
-Lives in `references/findings-ledger.md` (24 dated entries as of 2026-09-05). Read it when you want prior measurements before re-running one; append your own there, not here.
-
-## Measuring the skill listing: two free ground-truth methods (added 2026-08-28)
+## Measuring the skill listing: two free ground-truth methods
 
 Never accept a prior session's claim about how the harness behaves. Both of these
 cost nothing and settle it in one call. A session that skipped them shipped a
 "fix" for a bug that did not exist.
 
-**1. What the harness actually sent the model.** It writes its own listing into the
-session transcript as an `attachment` record of `type: "skill_listing"`. That is
-ground truth - it is the only way to prove a skill was silenced rather than infer it.
+**1. What the harness actually sent the model** — the `skill_listing` attachment
+record (snippet under *Where the floor actually comes from* above). It is the only
+way to prove a skill was silenced rather than infer it.
+
+**2. What the harness will accept.** The installed CLI binary has its JS bundle
+embedded and carries its own settings schema as literal strings. This outranks the
+docs, because it is the code that will actually run. The binary's path varies by
+install (`which claude` / `where claude`; a native install is usually
+`~/.local/bin/claude`, an npm install has a `cli.js` instead):
 
 ```
-python "<root>/Token Efficiency/skill-listing-probe/probe.py"
-python "<root>/Token Efficiency/skill-listing-probe/probe.py" --slug <project-slug>
+grep -a -o ".\{0,160\}skillOverrides.\{0,400\}" "$(which claude)" | head
 ```
 
-Filter on `isInitial` - later records are mid-session re-injections of one skill,
-not a budget measurement. Startup context is snapshotted at session start, so
-**no settings edit is ever visible to the session that made it**; probe a session
-that opened *after* the change, or you are measuring the old state.
-
-**2. What the harness will accept.** The installed CLI is a large PE with its JS
-bundle embedded, and it carries its own settings schema as literal strings. This
-outranks the docs, because it is the code that will actually run:
-
-```
-grep -a -o ".\{0,160\}skillOverrides.\{0,400\}" ~/.local/bin/claude | head
-```
-
-Verified this way on v2.1.233, and cross-checked against code.claude.com/docs/en/skills:
+The author verified these keys this way on v2.1.233, cross-checked against code.claude.com/docs/en/skills; re-run the grep on your version:
 
 | key | effect |
 |---|---|
@@ -176,23 +178,33 @@ When the listing exceeds the budget the harness does not truncate evenly - it
 switches to priority mode and **silently degrades the lowest-priority skills to
 bare names**, so they can no longer auto-trigger. A tight ceiling therefore
 starves skills at random as the collection grows. Control cost by controlling
-description **content**; keep the ceiling well above it. This machine sets the
-budget to 100,000 chars for exactly that reason.
+description **content**; keep the ceiling well above it (the author sets
+`SLASH_COMMAND_TOOL_CHAR_BUDGET` to 100000 at user level for exactly that reason).
 
 ### What actually costs what
 
-Measure before optimising - three of the four premises in the 2026-08-28 brief
-were stale or false, and all three overstated the win. Count every startup
-component, not just the one you were pointed at:
+Measure before optimising - in one of the author's sweeps, three of four premises
+in the brief were stale or false, and all three overstated the win. Count every
+startup component, not just the one you were pointed at:
+
+```python
+# description chars per installed personal skill, largest first
+import glob, os, re
+rows = []
+for f in glob.glob(os.path.expanduser("~/.claude/skills/*/SKILL.md")):
+    fm = open(f, encoding="utf-8").read().split("---")[1]
+    m = re.search(r"^description:(.*?)(?=^\S|\Z)", fm, re.S | re.M)
+    if m: rows.append((len(m.group(1).strip()), f))
+print("total", sum(n for n, _ in rows))
+for n, f in sorted(rows, reverse=True)[:15]: print(n, f)
+```
 
 ```
-python ~/.claude/skills/desc-census.py          # live description chars on disk
-wc -c ~/.claude/CLAUDE.md <root>/CLAUDE.md \
-      ~/.claude/projects/<slug>/memory/MEMORY.md
+wc -c ~/.claude/CLAUDE.md ./CLAUDE.md ~/.claude/projects/<slug>/memory/MEMORY.md
 ```
 
 Also count the SessionStart hook's injection - read it out of the session's own
-transcript rather than re-running the hook, which can block. On this machine the
+transcript rather than re-running the hook, which can block. On the author's setup the
 skill listing was 59% of startup, but the auto-memory `MEMORY.md` was second at
 17% and had never been looked at. Only `MEMORY.md` loads at startup; the
 individual memory files load on recall and cost nothing until then.
@@ -203,8 +215,9 @@ Project skills live in `<project>/.claude/skills/<name>/` and load only when cwd
 is that project (or a parent) - that is the biggest single lever, because it
 removes the description from every *other* chat. Two traps before moving any:
 
-- **Backup orphaning.** The config-sync copy set is keyed to `~/.claude/skills`.
-  Read its inclusion rule first; a move can silently drop a skill from backup.
+- **Backup orphaning.** If you back up or sync `~/.claude/skills` (a dotfiles
+  repo, a sync script), check its inclusion rule first; a move can silently drop a
+  skill from backup.
 - **Broken chains.** Grep every `SKILL.md`, hook, and scheduled routine for the
   name first. A routine's cwd decides which skills it can see, so a moved skill
   silently stops firing for it, with no error.
@@ -212,10 +225,11 @@ removes the description from every *other* chat. Two traps before moving any:
 Personal skills outrank project ones of the same name, so a leftover copy in
 `~/.claude/skills` shadows the moved one.
 
-### headless is not available here
+### If headless fails
 
-`claude -p` fails with "OAuth session expired and could not be refreshed", so a
-fresh-session probe cannot be scripted. Measure from transcripts instead.
+On the author's machine `claude -p` failed with "OAuth session expired and could not
+be refreshed", so a fresh-session probe could not be scripted. If yours does too,
+measure from transcripts instead.
 
 ## Feedback (optional)
 

@@ -1,6 +1,6 @@
 ---
 name: skill-execution-hardening
-description: "Stress-test a skill. EXECUTION - run it blind on a cheap weak subagent, find where the weak model stumbles, fix, re-test on a FRESH one. TRIGGERING - measure whether the description fires on the right prompts, using the bundled scripts/trigger_probe.py, since skill-creator's Unix-only run_eval.py and run_loop.py mis-measure here. Triggers - harden or pressure-test a skill, optimize a description, WinError 10038. Not authoring (skill-creator)."
+description: "Stress-test a skill. EXECUTION - run it blind on a cheap weak subagent, find where the weak model stumbles, fix, re-test on a FRESH one. TRIGGERING - measure whether the description fires on the right prompts, using the bundled scripts/trigger_probe.py, since skill-creator's run_eval.py and run_loop.py mis-measured on Windows in the author's testing. Triggers - harden or pressure-test a skill, optimize a description, WinError 10038. Not authoring (skill-creator)."
 ---
 
 # Hardening a skill's execution with a weak-model stress test
@@ -8,13 +8,13 @@ description: "Stress-test a skill. EXECUTION - run it blind on a cheap weak suba
 A skill's description controls whether it *fires*; its body controls whether the work is done *correctly* once it fires. This skill optimizes the body. The method: a weak/cheap model (Haiku) is a cheap proxy for "will fast inference read these instructions and do the right thing?" Where the weak model improvises badly, the skill is under-specified -- that gap is the bug, not the model.
 
 Pairs with, does not replace:
-- `anthropic-skills:skill-creator` -- authoring a skill, general improvement, benchmarking, and TRIGGERING/description eval.
+- `skill-creator` (Anthropic's skill; may be listed as `anthropic-skills:skill-creator`) -- authoring a skill, general improvement, benchmarking, and TRIGGERING/description eval.
 
 ## Reactive entry: a skill mis-guided you mid-task
 
-The standing global rule "A skill that mis-guides you gets hardened" routes here. If a skill steered you wrong during real work -- a misleading step, a wrong default, a missing branch -- that incident IS your failing trace; you don't need to manufacture one. Repair it with two constraints from that rule:
+If a skill steered you wrong during real work -- a misleading step, a wrong default, a missing branch -- that incident IS your failing trace; you don't need to manufacture one. Repair it with two constraints:
 - **Structural fix, not a landmine catalogue.** Correct the structural defect (misleading step / wrong default / missing branch / vague success word) so the skill stays LEAN. Do NOT append "watch out for X / also beware Y" entries until the body becomes a junk drawer -- that taxes every future load and buries the load-bearing steps. The landmine that prompted the fix goes in the **commit message** (`git log -- skills/<name>/` is its record -- records over forecasts), not the skill body. A genuinely recurring, structurally-illuminating failure may earn ONE line in the existing `Worked example (provenance)` section below -- never a new running list. **But if the only correct fix truly is a warning at a decision point** (not a rewrite), add it as an imperative directive per `llm-legible-project-docs` -- that IS structural; the catalogue ban is on *running lists of past landmines*, not on a single load-bearing warning the procedure needs.
-- **Don't derail the current task.** Finish the user's immediate need first (with the corrected understanding); run the test on an Agent subagent (the hardening loop is Agent-tool-based, `model: "haiku"`). Applying the fix globally is self-modification -- the blast-surface rule (global CLAUDE.md) governs review depth.
+- **Don't derail the current task.** Finish the user's immediate need first (with the corrected understanding); run the test on an Agent subagent (the hardening loop is Agent-tool-based, `model: "haiku"`). Applying the fix globally is self-modification -- see *Editing the skill is self-modification* at the bottom for review depth.
 
 Then run **The loop** below to verify the fix on a fresh weak subagent. If this skill's output is NOT cheaply checkable (subjective / prose -- see Scope), the weak-model test doesn't apply: make the structural fix, get an independent adversarial review, and surface the diff instead.
 
@@ -26,7 +26,7 @@ ONLY when the skill's correct output is **cheaply checkable** -- you can derive 
 
 1. **Pick a testable target + a concrete task** with an observable outcome a single subagent can attempt in one turn.
 2. **Establish cheap ground truth FIRST.** Before running anything, derive the answer key the cheap way (grep counts, file lists, expected structure). Without it you cannot catch hallucinated coverage or fabricated numbers. If you cannot cheaply derive ground truth, this loop does not fit (see Scope).
-3. **Run the skill blind with a weak subagent.** Spawn an Agent with `model: "haiku"`. Give it the skill (have it READ the skill file by absolute path -- faithful and cheap -- or inline the body), the target path, and the task. Do NOT give it the answer (no expected findings, no counts). This reproduces the real cold start; front-loading the answer inflates the result and hides the gap. Scope it READ-ONLY for audits and bake in machine hard rules (on this machine: "C: only, NEVER touch D:").
+3. **Run the skill blind with a weak subagent.** Spawn an Agent with `model: "haiku"`. Give it the skill (have it READ the skill file by absolute path -- faithful and cheap -- or inline the body), the target path, and the task. Do NOT give it the answer (no expected findings, no counts). This reproduces the real cold start; front-loading the answer inflates the result and hides the gap. Scope it READ-ONLY for audits and bake in the machine's hard rules (e.g. "only read under <ALLOWED ROOT>").
 4. **Observe HOW it executed, using the non-forgeable signal first.** Each Agent result returns the subagent's final text PLUS a usage block: `tool_uses`, `subagent_tokens`, `duration_ms`. `tool_uses` is **non-forgeable** -- 0 or a handful of tool uses means it did not actually read the code, no matter what its report claims; treat it as the primary honesty check. You do NOT get a per-file trace, so ALSO require a final `## How I worked` section (files/globs opened, search total, opened-and-read vs inferred, fraction covered) for detail -- but that prose is **forgeable**, so trust `tool_uses` over it when they disagree. Grade the output against your ground truth.
 5. **Diagnose: every failure is a candidate skill fix.** Classify what went wrong (scope ignored, counts fabricated, coverage over-claimed, steps skipped, format violated, hallucinated-instead-of-read, false positives on intentional patterns). Each is usually an *ambiguity the weak model filled badly* -- a place the skill under-specifies.
 6. **Fix the skill -- map each edit to an observed failure.** Do not speculatively rewrite -- a STRUCTURAL fix, not an accreting warning (see Reactive entry). Turn load-bearing guidance into imperative directives at the decision point (see `llm-legible-project-docs`): name the boundary, mandate the safe step, state the stakes. **Operationally define vague success words** ("audited", "complete", "checked") as concrete checkable actions, or the weak model satisfies the letter while violating the spirit. Show the `git diff`.
@@ -39,7 +39,7 @@ ONLY when the skill's correct output is **cheaply checkable** -- you can derive 
 You are <doing the skill's task> by following a SKILL specification.
 STEP 1 - Read and follow this skill file exactly: <ABS PATH to SKILL.md>
 STEP 2 - Perform its task against: <ABS PATH to target>, with NO focus argument (full default scope).
-SAFETY: target is on C:. Only read under that path. NEVER read/list/touch any D:\ path.
+SAFETY: only read under <ALLOWED ROOT>. NEVER read/list/touch anything outside it.
 Work from the real files on disk; do not guess. Produce output EXACTLY in the skill's reporting format.
 After your report, append "## How I worked": (a) exact files/globs opened; (b) did you enumerate
 with a search tool first and the raw total it returned; (c) for each item you marked OK, did you OPEN
@@ -63,7 +63,7 @@ Haiku subagents ran ~75-110k subagent tokens each in the worked example. Budget 
 
 ## Worked example (provenance)
 
-Target: `check-paths` (a fork of an upstream project; audits `from_pretrained`/`from_single_file` cache_dir routing). 2026-06-15, Haiku via the Agent tool.
+Target: `check-paths` (not included in this pack) (an audit skill for a fork of an upstream project that checks `from_pretrained`/`from_single_file` cache_dir routing). 2026-06-15, Haiku via the Agent tool.
 - **Baseline:** ignored scope (flagged out-of-scope files "critical"), fabricated counts ("~200+"), skipped 61/63 `pipelines/` files, claimed "95%+ follows policy" having sampled ~60%.
 - **Iter 1:** scope → imperative boundary with named tempters; enumeration-first with an exact grep denominator; truthful `Coverage: X of N`. Re-test: scope respected, exact counts, no false positives — but some runs narrowed `pipelines/**` and called the rest "out of scope" to fake 100%.
 - **Iter 2:** glob is recursive (subdirs IN scope); deferred-in-scope is `X < N`, never "out of scope". Re-test x2: loophole closed — but both equated "grepped all N" with "audited all N".
@@ -73,8 +73,10 @@ Net: 4 of 5 failure classes fixed cleanly; the 5th (coverage honesty) took three
 
 ## Testing a skill's TRIGGERING (description), not its execution
 
-The skill-creator's triggering harness does not work on Windows. This skill explains why and
-ships a working replacement so you get a real measurement instead of a silently-wrong one.
+In the author's testing, the skill-creator's triggering harness did not work on Windows.
+This section explains why and ships a working replacement so you get a real measurement instead of a
+silently-wrong one. skill-creator's scripts may have changed since; if you see neither symptom below,
+its own harness is fine to use.
 
 ### The bug (recognize it fast)
 `skill-creator/scripts/run_eval.py` (and `run_loop.py`, which calls it for the Description
@@ -105,17 +107,22 @@ process early** so a genuine trigger doesn't run the whole task. It tests the **
 skill by name** (no synthetic command file, no moving the skill) — so it measures exactly what the
 user experiences.
 
-**Run it from a NEUTRAL cwd** (a dir with no project `CLAUDE.md`), so only the skill's own
-name+description in `available_skills` drive the decision — not a project's instructions:
+**Neutral cwd is automatic.** The script runs every probe (and its preflight) inside one fresh
+empty temp dir, so no project `CLAUDE.md` or project settings can change what is measured — only
+the skill's own name+description in the skill listing drive the decision. You can launch it from
+anywhere:
 
 ```bash
-PY="C:/path/to/any/python.exe"            # stdlib only; any 3.8+ works
-mkdir -p /c/tmp/neutral && cd /c/tmp/neutral
-PYTHONUTF8=1 "$PY" /path/to/trigger_probe.py \
+# stdlib only; any Python 3.8+. On Windows use your python.exe path and keep PYTHONUTF8=1.
+PYTHONUTF8=1 python3 /path/to/skill-execution-hardening/scripts/trigger_probe.py \
   --eval-set eval.json \
   --skill-name <the-installed-skill-name> \
   --runs 3 --workers 6 --model <session-model-id> --timeout 70
 ```
+
+Flags: `--eval-set` and `--skill-name` are required; `--runs` (default 3), `--workers` (default 6),
+`--model` (default: the CLI's default model), `--timeout` seconds per probe (default 70),
+`--only-id N` (run just one eval, 1-based).
 
 `eval.json` is a list of `{"query": "...", "should_trigger": true|false}` — generate it with the
 skill-creator's Step-1 guidance (8-10 realistic should-trigger, 8-10 tricky near-miss should-NOT;
@@ -123,17 +130,23 @@ make them substantive multi-step asks — trivial one-step queries don't trigger
 description). Output: a per-query `[PASS|FAIL] hits/runs fired=… expected=…` table to stdout plus a
 JSON summary. A query "fired" if it triggered in ≥ half the runs (majority of 3).
 
+**Check validity before reading any score.** Exit code 2 with `PREFLIGHT FAILED` means the CLI
+could not answer a trivial prompt (usually an expired login -- run `claude`, then `/login`); nothing
+was measured. Otherwise, the JSON summary's `"valid"` must be `true`; if it is `false` (a
+`RESULTS VOID` banner), some probe runs died before producing output and the pass/fail table is
+not a measurement -- fix the cause and re-run.
+
 **Smoke-test first**: run one obvious should-trigger and one obvious should-NOT with `--only-id N`
 (1-based) before spending the full set. If an obvious trigger reads 0, something's off (wrong
 `--skill-name`, skill not installed, model id wrong) — fix before the full run.
 
-**Model fidelity vs cost**: use the model id that powers the user's real sessions (e.g.
-`claude-opus-4-8`) for a faithful result; each probe is short because it's killed at the first
+**Model fidelity vs cost**: use the model id that powers the user's real sessions (the model
+id their system prompt names) for a faithful result; each probe is short because it's killed at the first
 decision (~a few k tokens). A cheaper model is fine for clear-cut cases if cost matters — note the
 caveat that triggering can be model-dependent.
 
 ### Where this fits in the skill-creator flow
-Use the skill-creator (`anthropic-skills:skill-creator`) for everything else — designing the skill,
+Use `skill-creator` for everything else — designing the skill,
 writing eval queries, the qualitative output viewer. Substitute **this shim for Step-3
 `run_loop.py` / `run_eval.py`** when you're on Windows and just need the triggering numbers. The
 shim does NOT auto-rewrite the description; if you want optimization, read the failures and edit the

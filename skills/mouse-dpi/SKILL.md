@@ -1,7 +1,7 @@
 ---
 name: mouse-dpi
 description: >-
-  Find a mouse's real DPI and set in-game sensitivity to a target cm/360 on Windows - HID++ read of a Logitech LIGHTSPEED receiver for ground truth, G HUB settings.db as intent only, a Windows pointer-speed sanity check, then work out how a game maps mouse counts to camera degrees and solve for the slider. Use whenever mouse feel or mouse numbers come up - mouse dpi, what dpi am I on, set my sensitivity, sens, eDPI, cm/360, match my sensitivity in [game], make the mouse feel the same in [game], polling rate, new mouse set it up, this game feels too fast or too slow, the mouse feels off since I changed something. Not for display DPI or Windows display scaling, a mouse that is broken, laggy, or dropping connection, or FPS and stutter tuning (game-perf-tuning-windows).
+  Find a mouse's real DPI and set in-game sensitivity to a target cm/360 on Windows - HID++ read of a Logitech receiver for ground truth (G HUB settings.db as intent only), a Windows pointer-speed check, then the game's counts-to-degrees formula solved for the slider. Use whenever mouse feel or mouse numbers come up - what dpi am I on, set my sens, eDPI, cm/360, match my sensitivity in [game], make [game] feel like [other game], polling rate, new mouse set it up, this game feels too fast or too slow, the mouse feels off since I changed something. Not for display DPI or scaling, a broken, laggy or disconnecting mouse, or FPS/stutter tuning.
 ---
 
 # Mouse DPI and in-game sensitivity
@@ -40,8 +40,9 @@ to the skill folder** (`~/.claude/skills/mouse-dpi`): `cd` there, or prefix it.
 | "is my polling rate right" | It does not affect cm/360. Landmines, last bullet |
 
 Personal reference values - a settled cm/360, the hardware it was measured on,
-per-game set-points - live in **`baseline.md`**, and the worked examples below use
-those numbers, so read them as illustrations, not as anyone else's answer.
+per-game set-points - live in **`baseline.md`** (not shipped; created from
+`baseline.template.md` on first use). The numbers in the worked examples below are
+illustrations, not anyone's answer.
 `pwsh -NoProfile -File scripts/smoke.ps1` proves in ~15 s what works on a machine
 that has never run this skill.
 
@@ -57,7 +58,8 @@ python scripts/rawinput_dpi_test.py --distance-cm 20 --seconds 8 --yes  # 3
 ```
 
 `logi_dpi.py` needs `uv` (`winget install astral-sh.uv`); everything else is
-plain Python.
+plain Python 3.11+ (if `python` is not found on Windows, try `py`). Every script's
+last line starts `VERDICT:` - read that line first.
 
 1. **HID++ read - this is the answer (Logitech only).** Talks HID++ 2.0 straight
    to the mouse through the receiver and reports what the sensor is actually set
@@ -272,7 +274,7 @@ read-only and safe to run unannounced.
   hand-distance test there.
 - **Read/Glob/Grep can be blocked by a restrictive permission config on
   `%LOCALAPPDATA%` game folders**, and a broad recursive sweep across a publisher
-  root also trips the permission classifier. Tested workaround (2026-09-02): one
+  root also trips the permission classifier. Tested workaround: one
   narrow PowerShell pass confined to that one game's `Saved` subfolder. Do not
   widen a sweep to get around a denial - narrow it.
 - **cm/360 is comparable across games; eDPI is not.** eDPI (dpi x setting) drops
@@ -285,12 +287,12 @@ read-only and safe to run unannounced.
 Read-only, ~15 seconds, safe to run while a game is up:
 
 ```
-pwsh -NoProfile -File scripts/smoke.ps1     # expect `SUMMARY: 7 pass, 0 fail`
+pwsh -NoProfile -File scripts/smoke.ps1     # expect `0 fail` on the SUMMARY line
 python scripts/sens_calc.py --selftest      # the arithmetic on its own
 ```
 
-Seven checks, one `PASS`/`FAIL`/`SKIP` line each; all seven verified 2026-09-02 on
-Windows 11, pwsh 7.6.5, Python 3.12, and every script re-verified on 3.11 the same day. Off a Logitech rig the `logi_dpi` and
+Seven checks, one `PASS`/`FAIL`/`SKIP` line each; verified on Windows 11 with
+pwsh 7 and Python 3.11 and 3.12. Off a Logitech rig the `logi_dpi` and
 `ghub_dpi` lines report `SKIP` with the reason and the other five still PASS - that
 is correct, not a failure. A `windows_pointer_check` FAIL is a finding about the
 machine, not a defect here. `rawinput_dpi_test.py` is excluded because starting it

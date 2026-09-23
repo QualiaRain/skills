@@ -29,7 +29,7 @@ answer, only for flagging it.
 
 ## ARC Raiders: read this before quoting the constant
 
-Everything below is web research, not measurement on this machine. Each claim
+Everything below is web research, not an in-game measurement. Each claim
 names its source so a later session can re-check it rather than inherit it.
 
 - **The mapping is not a clean constant at normal polling rates.** The game

@@ -1,5 +1,5 @@
 [
-  {"query": "ok the 9 wave-5 fix branches are gate-clean and the bodies are drafted in notes/wave5-pr-bodies.md — let's push them to qfork and open the PRs, one step at a time", "should_trigger": true},
+  {"query": "ok the 9 wave-5 fix branches are gate-clean and the bodies are drafted in notes/wave5-pr-bodies.md — let's push them to my fork and open the PRs, one step at a time", "should_trigger": true},
   {"query": "alright I'm ready to submit these bug fixes upstream. walk me through it and let me approve each step before anything happens", "should_trigger": true},
   {"query": "resume the wave-4 push sequence where we left off", "should_trigger": true},
   {"query": "time to open the pull requests on OWNER/REPO for these fixes", "should_trigger": true},

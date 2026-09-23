@@ -14,6 +14,10 @@
 # notification that re-invokes the agent to analyze and (per the gh-comment-watch
 # autonomy) auto-post an in-scope reply.
 #
+# First run: if the seen-file does not exist yet, every item already on the
+# thread is recorded SILENTLY, so launching on an old thread does not replay its
+# whole history as "NEW". Only items that appear after that are emitted.
+#
 # Loop-safety: the authenticated account's OWN items are excluded, so an
 # auto-posted reply never re-triggers the watch. Dedup is by (channel,id) via a
 # persistent seen-file, so an edited/old item never re-fires and a RESTARTED
@@ -24,7 +28,7 @@
 # Required env:
 #   GCW_REPO     owner/repo  -- for a FORK PR this is the UPSTREAM repo, because
 #                the PR object lives upstream (e.g. OWNER/REPO), NOT the fork
-#   GCW_NUMBER   issue or PR number    (e.g. 4939)
+#   GCW_NUMBER   issue or PR number    (e.g. 123)
 # Optional env:
 #   GCW_ME       account to exclude    (default = gh authenticated login)
 #   GCW_DIR      state dir for seen/alive files (default = $TMPDIR or /tmp)
@@ -33,6 +37,12 @@ set -u
 : "${GCW_REPO:?set GCW_REPO=owner/repo}"
 : "${GCW_NUMBER:?set GCW_NUMBER=issue-or-pr-number}"
 ME="${GCW_ME:-$(gh api user --jq .login 2>/dev/null)}"
+if [ -z "$ME" ]; then
+  # Without a login we cannot exclude our own comments -> an auto-posted reply
+  # would re-trigger the watch. Refuse to start instead.
+  echo "gh-comment-watch: cannot determine GitHub login (run 'gh auth status' or set GCW_ME)" >&2
+  exit 1
+fi
 export ME
 DIR="${GCW_DIR:-${TMPDIR:-/tmp}}"
 INT="${GCW_INTERVAL:-60}"
@@ -40,6 +50,8 @@ mkdir -p "$DIR"
 slug="${GCW_REPO//\//_}-${GCW_NUMBER}"
 SEEN="$DIR/gcw-$slug.seen"
 ALIVE="$DIR/gcw-$slug.alive"
+seed=0
+[ -e "$SEEN" ] || seed=1   # brand-new watch: record existing items without emitting
 touch "$SEEN"
 
 # Detect once whether this number is a PR, so we skip pulls/* (404 on an issue).
@@ -61,29 +73,30 @@ emit_new(){
     key="$pfx$id"
     if ! grep -qxF "$key" "$SEEN" 2>/dev/null; then
       printf '%s\n' "$key" >> "$SEEN"
+      [ "$seed" = 1 ] && continue
       printf 'NEW %s on %s#%s by %s (id %s): %s\n' "$label" "$GCW_REPO" "$GCW_NUMBER" "$author" "$id" "$body"
     fi
   done
 }
 
 while true; do
-  : > "$ALIVE"   # liveness heartbeat (mtime checked by the ScheduleWakeup backstop)
+  touch "$ALIVE"   # liveness heartbeat (mtime checked by the ScheduleWakeup backstop)
 
   # 1) Conversation comments (issue + PR conversation tab). Keys stay bare.
-  gh api "repos/$GCW_REPO/issues/$GCW_NUMBER/comments?per_page=100" \
-    --jq '.[] | select(.user.login != env.ME) | "\(.id)\t\(.user.login)\t\(.body | gsub("[\n\r]+"; " ") | .[0:300])"' 2>/dev/null \
+  gh api --paginate "repos/$GCW_REPO/issues/$GCW_NUMBER/comments?per_page=100" \
+    --jq '.[] | select(.user.login != env.ME) | "\(.id)\t\(.user.login)\t\((.body // "") | gsub("[\n\r]+"; " ") | .[0:300])"' 2>/dev/null \
   | emit_new "" "COMMENT"
 
   if [ "$is_pr" = 1 ]; then
     # 2) Inline review comments (line notes in the "Files changed" tab). Prefix rc:
-    gh api "repos/$GCW_REPO/pulls/$GCW_NUMBER/comments?per_page=100" \
-      --jq '.[] | select(.user.login != env.ME) | "\(.id)\t\(.user.login)\t\(.path // "?"):\(.line // .original_line // 0) \(.body | gsub("[\n\r]+"; " ") | .[0:300])"' 2>/dev/null \
+    gh api --paginate "repos/$GCW_REPO/pulls/$GCW_NUMBER/comments?per_page=100" \
+      --jq '.[] | select(.user.login != env.ME) | "\(.id)\t\(.user.login)\t\(.path // "?"):\(.line // .original_line // 0) \((.body // "") | gsub("[\n\r]+"; " ") | .[0:300])"' 2>/dev/null \
     | emit_new "rc:" "REVIEW COMMENT"
 
     # 3) Review submissions (APPROVED / CHANGES_REQUESTED / a review summary body).
     #    Skip the empty "COMMENTED" wrapper GitHub auto-creates to hold inline notes.
-    gh api "repos/$GCW_REPO/pulls/$GCW_NUMBER/reviews?per_page=100" \
-      --jq '.[] | select(.user.login != env.ME) | select((.body | length > 0) or (.state == "APPROVED") or (.state == "CHANGES_REQUESTED") or (.state == "DISMISSED")) | "\(.id)\t\(.user.login)\t[\(.state)] \(.body | gsub("[\n\r]+"; " ") | .[0:300])"' 2>/dev/null \
+    gh api --paginate "repos/$GCW_REPO/pulls/$GCW_NUMBER/reviews?per_page=100" \
+      --jq '.[] | select(.user.login != env.ME) | select(((.body // "") | length > 0) or (.state == "APPROVED") or (.state == "CHANGES_REQUESTED") or (.state == "DISMISSED")) | "\(.id)\t\(.user.login)\t[\(.state)] \((.body // "") | gsub("[\n\r]+"; " ") | .[0:300])"' 2>/dev/null \
     | emit_new "rv:" "REVIEW"
   fi
 
@@ -94,5 +107,6 @@ while true; do
     state="$cur"
   fi
 
+  seed=0   # after the first full pass, everything new is emitted
   sleep "$INT"
 done

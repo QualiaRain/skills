@@ -1,5 +1,8 @@
 # decompose-to-anchor -- dogfood validation (2026-06-17)
 
+The author's validation run for what is now the *Finding the anchor when 'done' is subjective* section of
+`../SKILL.md` (it was a separate skill, "decompose-to-anchor", at the time; "the skill" below means that section).
+
 The skill was verified by **applying it to itself**: "is this skill good?" is subjective, so
 it was decomposed to a mechanical anchor -- *a weak model (Haiku), given ONLY the skill on a
 fresh subjective task it has never seen, must land on a genuinely mechanical leaf.* That is the
@@ -8,7 +11,7 @@ fresh subjective task it has never seen, must land on a genuinely mechanical lea
 ## Method
 
 - **Writer != grader.** Writer = Haiku (via the Agent tool, `model: "haiku"`), blind (given only the
-  SKILL.md path + the scenario, no answer key). Grader = Opus (this session).
+  SKILL.md path + the scenario, no answer key). Grader = Opus (the author's orchestrating session).
 - **Cheap ground truth, derived BEFORE running** -- four checkable properties per run:
   - **P1** -- recognizes there is no usable *top-level* mechanical anchor (doesn't fake one or punt to "use judgment").
   - **P2** -- decomposes the goal into sub-properties.

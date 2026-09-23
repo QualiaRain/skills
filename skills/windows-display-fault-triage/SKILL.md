@@ -1,12 +1,12 @@
 ---
 name: windows-display-fault-triage
 description: >-
-  Find WHY a Windows display looks wrong by MEASURING the colour stack instead of guessing. Triggers: colours look off, washed out, too dark, a green or purple tint, fringing on text, blurry or pixelated text, scaling looks weird, HDR looks wrong, my monitor might be dying, something looks off on my screen. Not for FPS (game-perf-tuning-windows) or mouse feel (mouse-dpi).
+  Find WHY a Windows display looks wrong by MEASURING the colour stack instead of guessing. Triggers: colours look off, washed out, too dark, a green or purple tint, fringing on text, blurry or pixelated text, scaling looks weird, HDR looks wrong, my monitor might be dying, something looks off on my screen. Not for FPS/stutter tuning or mouse feel (mouse-dpi).
 ---
 
 # Windows display fault triage
 
-A "the screen looks wrong" report can come from five layers. They are cheap to separate, and the
+A "the screen looks wrong" report can come from any of the layers below. They are cheap to separate, and the
 order below is deliberate: each step is one script, runs in seconds, needs no browser and no
 screenshot, and each result rules a layer IN or OUT so the next step is smaller.
 
@@ -20,7 +20,7 @@ screenshot, and each result rules a layer IN or OUT so the next step is smaller.
 6 panel       only after 0-5 are clean
 ```
 
-Run everything from `scripts/`. Steps 1-4 are read-only and unelevated. Writes, all reversible:
+Script paths below are relative to this skill's folder (`cd` there first). Windows only. Steps 1-4 are read-only and unelevated. Writes, all reversible:
 `set_hz.ps1` (step 5) changes the live display mode until the next sign-in; `nvapi_color.ps1
 -FixRange` is the only persistent write; `display_history.ps1` writes `dxdiag.txt` into the
 `-OutDir` you give it. `nvapi_color.ps1` needs PowerShell 7 (`pwsh`), not 5.1.
@@ -29,7 +29,7 @@ Run everything from `scripts/`. Steps 1-4 are read-only and unelevated. Writes, 
 
 0. **NVIDIA Color accuracy mode, first, 5 seconds, no script exists for it.** NVIDIA App > System >
    Display (or NVIDIA Control Panel > Display) > "Color accuracy mode". If it reads **Enhanced**,
-   have the owner tick **"Override to reference mode"** and look. Observed fact (2026-09-05, n=1): with a
+   have the owner tick **"Override to reference mode"** and look. Observed once (n=1): with a
    chat-assigned ICC profile associated and Enhanced on, the desktop colours were wrong and
    reference mode fixed them instantly. Working explanation, not verified from any probe: Enhanced
    has the driver apply the display's associated Windows ICC profile (matrix/TRC) to the whole
@@ -38,9 +38,9 @@ Run everything from `scripts/`. Steps 1-4 are read-only and unelevated. Writes, 
    assignments so Windows falls back to the monitor's own INF profile:
    `HKCU:\Software\Microsoft\Windows NT\CurrentVersion\ICM\ProfileAssociations\Display\{4d36e96e-e325-11ce-bfc1-08002be10318}\000N`
    (back up first; `reg export` fails silently on paths over 260 chars, so export to a short path
-   or dump the keys to JSON with PowerShell). Real case 2026-09-05: a downloaded RTINGS profile a
-   chat had assigned to every slot on 2026-08-29 was the whole fault, and every probe below was
-   clean.
+   or dump the keys to JSON with PowerShell). Real case: a downloaded review-site profile that an
+   earlier chat had assigned to every slot a week before was the whole fault, and every probe below
+   was clean. No NVIDIA GPU: skip this step.
 
 1. **Wire format, HDR, DPI** - `pwsh -File scripts/display_color.ps1`
    Gives per active path: monitor, output tech, refresh, colour encoding, bits per channel, HDR
@@ -59,12 +59,12 @@ Run everything from `scripts/`. Steps 1-4 are read-only and unelevated. Writes, 
    An ICC profile with **no vcgt tag cannot touch the desktop through Windows** - the loader has
    nothing to load, and only colour-managed apps read the matrix. It CAN still touch the desktop
    through NVIDIA's Enhanced color accuracy mode (step 0). Measure the LUT, but do not call a
-   profile "ruled out" until step 0 is answered: on 2026-09-05 a transcript audit named an ICC
+   profile "ruled out" until step 0 is answered: in the real case, a transcript audit named an ICC
    rewrite as the cause, this script showed ramp identity and vcgt absent, the profile was declared
    harmless, and it was in fact the cause via NVIDIA Enhanced mode. A "ruled out" needs every
    consumer of the artifact listed, not one.
 
-3. **NVIDIA driver output state** - `pwsh -File scripts/nvapi_color.ps1`
+3. **NVIDIA driver output state** - `pwsh -File scripts/nvapi_color.ps1` (NVIDIA GPUs only; skip otherwise)
    Look for `dynamicRange = LIMITED` (crushed blacks, grey-looking whites - the classic "washed
    out"), a non-RGB `format`, or a digital vibrance `currentLevel` above 0 (oversaturation).
    `-FixRange` sets Full if it is Limited; that is the only persistent write in this skill, so say
@@ -78,7 +78,10 @@ Run everything from `scripts/`. Steps 1-4 are read-only and unelevated. Writes, 
    exactly like "pixelation"), night light, NVIDIA per-display registry values, NVCP profile
    database write times, monitor vendor tooling, and any running gamma-bending process.
 
-5. **Refresh-rate A/B** - `pwsh -File scripts/set_hz.ps1 -Hz 120`, look, then `-Hz 240`
+5. **Refresh-rate A/B** - `pwsh -File scripts/set_hz.ps1 -Hz 120`, look, then run it again with the
+   monitor's native rate (e.g. `-Hz 240`; step 1 printed it). Use rates the monitor supports: the
+   script prints `CDS_TEST ... -> 0 (0 = ok)` and a `Now: ... Hz` line when it worked; any other
+   CDS_TEST value means that mode was refused and nothing changed. Primary display only.
    Not saved to the registry, reverts at next sign-in. If the fault disappears at the lower rate the
    link is at fault (cable, DSC, negotiated version). If it is identical at both, the link is
    cleared and so is most of the PC.
@@ -108,13 +111,13 @@ recent driver installs and the dxdiag Display Devices block. Slower (dxdiag up t
 | vibrance currentLevel > 0 | oversaturation explained | - |
 | ClearType off, or orientation wrong for the panel | text fringing / blur explained | - |
 | Magnifier RunningState on, colour filter Active | "pixelation" / wrong colours explained | - |
-| same fault at 120 Hz and 240 Hz | monitor or panel | cable, DSC, link negotiation |
+| same fault at the lower and the native refresh rate | monitor or panel | cable, DSC, link negotiation |
 | all of the above clean | the monitor | the whole PC side |
 
-The real case this came from (2026-09-05) walked steps 1-6 in this order: wire RGB 4:4:4 10 bpc
+The real case this came from walked steps 1-6 in this order: wire RGB 4:4:4 10 bpc
 HDR off, gamma ramp identity, suspect ICC without vcgt, NVAPI Full range RGB vibrance 0, ClearType
 and filters normal, 120 Hz identical to 240 Hz, monitor power-cycled and factory reset. The verdict
-"it is the monitor" was wrong. the owner then opened NVIDIA App, saw Color accuracy mode = Enhanced, ticked
+"it is the monitor" was wrong. The owner then opened NVIDIA App, saw Color accuracy mode = Enhanced, ticked
 reference mode, and the colours were fixed. That is why step 0 exists and runs first. Also: an ASUS
 OLED goes dark for several minutes (status light off) after a factory reset while it runs a pixel
 refresh; that is normal, not a fault.
@@ -122,11 +125,11 @@ refresh; that is normal, not a fault.
 ## Two things that waste the owner's time
 
 A full-window screenshot cannot show subpixel colour fringing - the resampling destroys the very
-thing being judged. If ClearType or fringing is suspected, ask him for a 100% crop of a small patch
+thing being judged. If ClearType or fringing is suspected, ask the owner for a 100% crop of a small patch
 of text, not a screenshot of the desktop.
 
-Do not narrate the layers to him. Run the probes, then tell him what is true now, what you ruled
-out, and the one thing he does next.
+Do not narrate the layers to the owner. Run the probes, then tell them what is true now, what you
+ruled out, and the one thing they do next.
 
 ## Feedback (optional)
 

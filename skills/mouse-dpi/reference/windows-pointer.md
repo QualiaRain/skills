@@ -44,8 +44,8 @@ mistake that has already caused one wrong note in this skill's history.
 | 10/11 | 18 | 3.0 |
 | 11/11 | 20 | 3.5 |
 
-Provenance: the two bolded rows were **measured on the machine this skill was
-built on, in mid-August 2026**, by an injected-move test -
+Provenance: the two bolded rows were **measured by the skill's author** with an
+injected-move test -
 `MouseSensitivity=4` moved the cursor exactly
 0.25 px per count, and `MouseSensitivity=10` moved it exactly 1 px per count in
 24 of 25 samples. The other nine rows are public knowledge (the Windows pointer
@@ -92,8 +92,7 @@ The move:
    game's sensitivity gets an extra factor of `D' / D''`, subject to the same
    linear/nonlinear rule.
 
-**Worked example, and the one the machine this skill was built on actually ran
-(August 2026):** `m = 0.25` at `D = 1600`. New DPI `1600 * 0.25 = 400`; slider to notch 6. The
+**Worked example (the author's own case):** `m = 0.25` at `D = 1600`. New DPI `1600 * 0.25 = 400`; slider to notch 6. The
 desktop feels identical. Every raw-input game whose sensitivity was tuned at 1600
 DPI is now **4x slower in the hand** and needs its setting raised - by exactly
 x4 if the game is linear, by a re-solve if it is not.

@@ -8,10 +8,11 @@ background thread (no select), decide from the FIRST tool_use whether the skill 
 the process early (so a real trigger doesn't run the whole task).
 
 Tests the REAL installed skill by name (no synthetic command, no moving the skill). Run from a
-neutral cwd (no project CLAUDE.md) so only the skill's name+description drive the decision.
+neutral cwd (no project CLAUDE.md) so only the skill's name+description drive the decision --
+the script enforces this itself by running every probe in one fresh empty temp dir.
 
 Usage: python trigger_probe.py --eval-set FILE --skill-name NAME [--runs 3] [--workers 6]
-                               [--model claude-opus-4-8] [--timeout 70] [--only-id N]
+                               [--model MODEL] [--timeout 70] [--only-id N]
   eval-set: JSON list of {"query": "...", "should_trigger": true|false}
   Tip: set PYTHONUTF8=1 on Windows so any UTF-8 reads/writes don't crash under cp1252.
 """
@@ -19,6 +20,7 @@ import argparse
 import json
 import os
 import queue
+import re
 import subprocess
 import tempfile
 import threading
@@ -56,8 +58,8 @@ def probe_once(query, skill_name, model, timeout):
     # a project CLAUDE.md is extra instruction the model reads, and a project
     # settings.local.json can carry `skillListingBudgetFraction`, which strips skill
     # DESCRIPTIONS from the listing -- exactly the text under test. Running the probe from
-    # `Claude Eval Sandbox` or `To Do` would score every should-trigger query as a miss and
-    # look like a bad description. A temp dir has neither.
+    # such a project dir would score every should-trigger query as a miss and look like a
+    # bad description. A temp dir has neither.
     cmd = ["claude", "-p", query, "--output-format", "stream-json",
            "--verbose", "--include-partial-messages"]
     if model:
@@ -203,7 +205,8 @@ def preflight(model):
     except Exception as ex:
         return False, "could not run claude: %s" % ex
     out = (r.stdout or "") + (r.stderr or "")
-    if "READY" in out.upper():
+    # Whole-word match: a plain substring test would accept error text such as "ALREADY".
+    if re.search(r"\bREADY\b", out.upper()):
         return True, ""
     first = next((ln.strip() for ln in out.splitlines()
                   if ln.strip() and not ln.strip().startswith("Warning:")), "no output")
@@ -226,12 +229,14 @@ def main():
         print("PREFLIGHT FAILED -- refusing to run, because every probe would return 0 hits")
         print("and that is indistinguishable from 'the skill never fires'.")
         print("  reason: %s" % why)
-        print("  most likely the claude CLI OAuth session expired -- run `claude` once")
-        print("  interactively to re-authenticate, then repeat this probe.")
+        print("  most likely the claude CLI OAuth session expired -- run `claude` interactively")
+        print("  and use /login to re-authenticate, then repeat this probe.")
         raise SystemExit(2)
 
     evals = json.loads(Path(args.eval_set).read_text(encoding="utf-8"))
     if args.only_id is not None:
+        if not 1 <= args.only_id <= len(evals):
+            raise SystemExit("--only-id must be between 1 and %d" % len(evals))
         evals = [evals[args.only_id - 1]]
 
     tasks = [(i, e) for i, e in enumerate(evals)]

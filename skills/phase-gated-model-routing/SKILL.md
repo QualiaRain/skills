@@ -5,7 +5,9 @@ description: "Budget-aware model and effort routing - phase the work, run each p
 
 # Phase-Gated Model Routing
 
-Spend Fable's intelligence where it's uniquely valuable (planning, synthesis, mistake-catching), and run everything else on the cheapest model+effort that can traverse it — without burning the savings on cache churn or interrupting the owner more than necessary.
+Spend your strongest model's intelligence where it's uniquely valuable (planning, synthesis, mistake-catching), and run everything else on the cheapest model+effort that can traverse it — without burning the savings on cache churn or interrupting the owner more than necessary.
+
+**Tier names.** "Fable" below means the top tier the author had (above Opus). If your account has no Fable, read every "Fable" as **Opus**, the strongest model you can pick. Prices and model params are as the author checked them on the date shown; recheck with the current docs.
 
 ## The economics this is built on (checked vs claude-api docs, 2026-06-12)
 
@@ -14,19 +16,19 @@ Spend Fable's intelligence where it's uniquely valuable (planning, synthesis, mi
 | Prompt cache is **model-scoped** — switching models re-reads the whole conversation uncached at the new model's input rate, then re-caches (1.25× write premium) | Swap cost scales with context length. Swap down EARLY while the convo is short |
 | Cache TTL is **5 minutes** — any human-paced pause usually expires it | At a phase boundary the full re-read happens on *either* model, so a swap there costs only the rate delta + re-write premium, not the whole re-read. The money-loser is **mid-phase** swapping/thrashing, which kills a live cache |
 | Effort changes don't appear in the cache-invalidation hierarchy (reasoned 2026-06-12, not measured — `output_config` isn't part of the rendered prefix) | Prefer an effort change over a model change when either would do. But an effort rec still costs a halt + the owner's attention — batch it into an ask you're already making |
-| Subagents start with **fresh, tiny context**; the Agent tool's `model` param accepts `sonnet`/`opus`/`haiku`/`fable` (verified 2026-06-12) | Delegating batch work to a cheap subagent costs nothing in cache and the cheap model never ingests the long conversation — usually beats a session downswap |
-| Approx API $/MTok in/out: Fable $10/$50, Opus $5/$25, Sonnet $3/$15, Haiku $1/$5 (200k re-read ≈ $2 Fable / $0.60 Sonnet). Desktop usage metering assumed roughly proportional | Quantifies the swap-cost tradeoffs above |
+| Subagents start with **fresh, tiny context**; the Agent tool's `model` param accepts tier aliases such as `sonnet`/`opus`/`haiku` (plus `fable` where available; verified 2026-06-12) | Delegating batch work to a cheap subagent costs nothing in cache and the cheap model never ingests the long conversation — usually beats a session downswap |
+| Approx API $/MTok in/out as of 2026-06: Fable $10/$50, Opus $5/$25, Sonnet $3/$15, Haiku $1/$5 (200k re-read ≈ $2 Fable / $0.60 Sonnet). Subscription usage metering assumed roughly proportional | Quantifies the swap-cost tradeoffs above |
 
 ## Hard constraints: who holds the knobs
 - You cannot change your own model or effort — the picker is the owner's. "Pausing at a phase boundary" means ending the phase with a clickable AskUserQuestion (in a chat the owner is watching) whose options are model+effort combos for the next phase, recommended pick first (e.g. "Sonnet / medium (Recommended)").
-- Spawned task-chips **inherit the owner's session setting at click time** — a tier written into the chip prompt does not bind. Always state the recommended model/effort to the owner in plain text alongside the chip.
+- Spawned task-chips (Claude Desktop app) **inherit the owner's session setting at click time** — a tier written into the chip prompt does not bind. Always state the recommended model/effort to the owner in plain text alongside the chip.
 - **Picker-mismatch handling:** at the start of every phase, check the model you're actually running as (your system prompt states it) against the plan's recommendation. On mismatch, proceed with ONE plain-text notice ("running this phase on X; plan said Y — fine to continue, or switch and say go") and don't re-ask. Attribute tripwires to the *actual* model, not the planned one.
-- Effort caveat: `xhigh` exists at the API but may not be in the Desktop picker — only recommend effort levels the owner can actually click.
+- Effort caveat: `xhigh` exists at the API but may not be in the owner's picker — only recommend effort levels the owner can actually select.
 
 ## The flow
-In a coordination/orchestrator chat, do NOT run §2–§5 inline — spawn a track chip that carries this flow and stay available (the orchestrator no-long-loops rule).
+In a coordination/orchestrator chat, do NOT run §2–§5 inline — hand this flow to a separate session or task (e.g. a Desktop task chip) and stay available; an orchestrator should not sit in long loops.
 
-**Scope limit:** §3 (delegate a batch) and §5's fresh-agent verifier need the Agent tool, available from a **top-level session or a track chip** but **not from inside an already-spawned subagent/workflow agent** (no nested agents in this harness). From within a subagent, fall back to inline execution + a script-based check (§5 first branch).
+**Scope limit:** §3 (delegate a batch) and §5's fresh-agent verifier need the Agent tool, available from a **top-level session** (including a separately spawned task session) but **not from inside an already-spawned subagent/workflow agent** (subagents cannot spawn subagents). From within a subagent, fall back to inline execution + a script-based check (§5 first branch).
 
 ### 1. Fable-low opener (planning phase)
 On Fable (low is usually enough for planning): clarify load-bearing assumptions, then produce a **phase plan written to a durable file** — named per task (e.g. `plan-<task>.md`, not a generic `PLAN.md` that collides/accretes) — containing per phase:
@@ -34,7 +36,7 @@ On Fable (low is usually enough for planning): clarify load-bearing assumptions,
 - recommended model + effort
 - a rough tool-call budget (powers the tripwires below)
 
-Writing it to a file matters: the downswapped model and the final verifier must not depend on chat history to know what success means. At wrap, fold anything durable into the project's real docs (HANDOFF.md etc.) and delete the plan file (clean-up-scratch rule).
+Writing it to a file matters: the downswapped model and the final verifier must not depend on chat history to know what success means. At wrap, fold anything durable into the project's real docs (HANDOFF.md etc.) and delete the plan file so scratch files don't accrete.
 
 ### 2. Downswap early
 At the end of the opener — while the conversation is short and the swap is cheap — present the ask for the first execution phase. Defaults:
@@ -65,12 +67,12 @@ On a trip: halt, state plainly what tripped, present the ask. **Escalate effort 
 
 ### 5. Verify the wrap — script if checkable, fresh Fable agent if it needs judgment
 Branch on what the acceptance criteria require:
-- **Mechanically checkable** (exact string match, file/row counts, exit codes, schema validation, diff-clean) → verify with a **script** (`grep -c`, PowerShell, a test run), not an LLM — deterministic, no hallucination risk, costs nothing (boring-over-clever applied to verification).
+- **Mechanically checkable** (exact string match, file/row counts, exit codes, schema validation, diff-clean) → verify with a **script** (`grep -c`, PowerShell, a test run), not an LLM — deterministic, no hallucination risk, costs nothing.
 - **Judgment** (does this read naturally, is the architecture sound, did it solve the user's intent vs. the literal spec) → the fresh Fable agent below.
 
 Most phases have both — script the mechanical part, send only judgment to the agent.
 
-For the judgment path: do NOT swap the long conversation back to Fable (it re-reads the *entire* conversation at Fable's rate + re-cache premium). Spawn a **Fable subagent** (Agent tool, `model: "fable"`) that cold-reads only (1) the plan/acceptance-criteria file and (2) the deliverables on disk (~10k tokens vs 200k), returning pass/fail per criterion with evidence. **Require the verifier to state which model it's running as in its first line, and check it** — else verification could silently run on the cheap session model. Cold verification is also a better test (a fresh reader isn't marinated in the session's assumptions — same logic as the cold-start doc audit in `headless-instruction-selftest`).
+For the judgment path: do NOT swap the long conversation back to Fable (it re-reads the *entire* conversation at Fable's rate + re-cache premium). Spawn a **Fable subagent** (Agent tool, `model: "fable"`, or `"opus"` if that is your top tier) that cold-reads only (1) the plan/acceptance-criteria file and (2) the deliverables on disk (~10k tokens vs 200k), returning pass/fail per criterion with evidence. **Require the verifier to state which model it's running as in its first line, and check it** — else verification could silently run on the cheap session model. Cold verification is also a better test (a fresh reader isn't marinated in the session's assumptions — same logic as the cold-start doc audit in `headless-instruction-selftest`).
 
 If the verifier finds problems: emit a new mini phase-plan with a model rec per fix, repeat from §2. **Terminal exit:** after the ladder tops out (Fable high) and verification still fails, or after **3 total verify-fix cycles**, STOP and surface the failing criteria with evidence to the owner. Never loop indefinitely.
 
@@ -79,7 +81,7 @@ If the verifier finds problems: emit a new mini phase-plan with a model rec per 
 ### The question this answers
 
 "What is the *cheapest* model that **reliably** does this task?" — across a ladder of
-models ordered cheap→expensive (the canonical one is Haiku < Sonnet < Opus 4.8, but
+models ordered cheap→expensive (the canonical one is Haiku < Sonnet < Opus, but
 any cost-ordered set works). The deliverable is a per-task verdict: the cheapest model
 that clears the reliability bar, plus the tasks where *no* model does.
 
@@ -113,18 +115,13 @@ script. See the `workflow-cost-discipline` skill for why a workflow (not paralle
 agents) is the right tool when per-stage model routing is the whole point.
 
 **Run the trials sequentially with early-exit — don't batch K up front.** The
-reliability bar is K/K, so a model only stays in the running while it keeps passing.
-The instant one trial fails, that model is out for this task and you escalate — so the
-remaining trials (both the solver attempt *and* its judge call) are wasted work. Run
-trial 1, grade it; only if it passes run trial 2; and so on. A model that's going to
-fail costs you ~1 trial instead of K; a model that's reliable costs the full K (which
-you genuinely need to confirm K/K). This applies the ladder's "stop measuring once the
-answer is known" logic recursively, at the trial level. It trades wall-clock parallelism
-for token cost — the right trade when the goal is the cheapest possible run, and "more
-trials survived without a fail" is exactly what earns the higher confidence.
+reliability bar is K/K, so the first failed trial knocks a model out for that task;
+any remaining trials (solver *and* judge call) would be wasted. Run trial 1, grade it;
+only if it passes run trial 2; and so on. A failing model costs ~1 trial instead of K;
+a reliable one costs the full K, which you need anyway to confirm K/K. This trades
+wall-clock parallelism for token cost.
 
-Sketch of the control flow (real one lives in
-`Claude Eval Sandbox/model-escalation-eval/eval.workflow.js`):
+Sketch of the control flow (`solve`, `judge`, `allTasks`, `K` are yours to define):
 
 ```js
 const LADDER = ['haiku', 'sonnet', 'opus']        // cheap → expensive
@@ -150,7 +147,7 @@ sequential, because that's where the early-exit savings live.)
 
 ### Keep the judge cheap — it's the dominant cost
 
-The **strong-model judge is the most expensive part of the eval** (observed on the sandbox run: Opus grading dwarfed solver spend), so save on the *number* of judge calls, not the judge's strength. Main lever: the sequential early-exit loop above — a model that's going to fail gets graded ~once instead of K times. Secondary lever: if several verdicts must happen together, batch them into one judge call with structured per-candidate output.
+The **strong-model judge is the most expensive part of the eval** (on the author's run, Opus grading dwarfed solver spend), so save on the *number* of judge calls, not the judge's strength. Main lever: the sequential early-exit loop above. Secondary lever: if several verdicts must happen together, batch them into one judge call with structured per-candidate output.
 
 Do **not** economize by swapping the judge down to a weak model — the verdict is what the user acts on, and a wrong "Haiku is sufficient" is the costliest error this eval can make.
 
@@ -195,16 +192,8 @@ than no eval.
 7. **Report the verdict and its caveats** — the per-task cheapest-sufficient model, the
    monotonicity caveat, and the task-bar scope limit.
 
-### Worked reference
-
-A complete, runnable instance — 8 real bugs, the cascade workflow, the leak-proof fixture
-split, the Opus judge — lives in this machine's eval sandbox at
-`~/Claude/Claude Eval Sandbox/model-escalation-eval/`
-(`README.md` for the method, `eval.workflow.js` for the cascade). Read it when you need a
-concrete template to adapt rather than building from this sketch.
-
 ## Exceptions — never downswap these
-Per the global "spend intelligence in proportion to blast surface" rule, these always run at max intelligence however mechanical they look: **self-modification** (CLAUDE.md, skills, hooks, settings, deny list), **security-relevant changes**, and anything whose failure is expensive to unwind (wide refactors, until verified). The Ferrari always drives these.
+Spend intelligence in proportion to blast surface: these always run at max intelligence however mechanical they look: **self-modification** (CLAUDE.md, skills, hooks, settings, deny list), **security-relevant changes**, and anything whose failure is expensive to unwind (wide refactors, until verified). The Ferrari always drives these.
 
 ## Quick self-check before any phase transition
 1. Is the next phase's difficulty different from the current one? If not, don't ask — continue.
